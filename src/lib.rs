@@ -1,7 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufReader, Read},
-};
+use std::fs::File;
 
 use memmap2::Mmap;
 
