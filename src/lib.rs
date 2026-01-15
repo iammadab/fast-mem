@@ -67,8 +67,15 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 
     let mut header = [0_u8; 10];
 
+    let mut load_histogram: [u64; 4] = [0; 4];
+    let mut store_histogram: [u64; 4] = [0; 4];
+
     loop {
-        reader.read_exact(&mut header).unwrap();
+        match reader.read_exact(&mut header) {
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(e) => panic!("failed to read header: {}", e),
+        }
 
         let op = header[0];
         let width = header[1] as usize;
@@ -81,13 +88,31 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
                 reader.read_exact(&mut value[..width]).unwrap();
 
                 match width {
-                    1 => mem_emulator.store_u8(addr, value[0]),
-                    2 => mem_emulator
-                        .store_u16(addr, u16::from_le_bytes(value[..width].try_into().unwrap())),
-                    4 => mem_emulator
-                        .store_u32(addr, u32::from_le_bytes(value[..width].try_into().unwrap())),
-                    8 => mem_emulator
-                        .store_u64(addr, u64::from_le_bytes(value[..width].try_into().unwrap())),
+                    1 => {
+                        store_histogram[0] += 1;
+                        mem_emulator.store_u8(addr, value[0]);
+                    }
+                    2 => {
+                        store_histogram[1] += 1;
+                        mem_emulator.store_u16(
+                            addr,
+                            u16::from_le_bytes(value[..width].try_into().unwrap()),
+                        );
+                    }
+                    4 => {
+                        store_histogram[2] += 1;
+                        mem_emulator.store_u32(
+                            addr,
+                            u32::from_le_bytes(value[..width].try_into().unwrap()),
+                        );
+                    }
+                    8 => {
+                        store_histogram[3] += 1;
+                        mem_emulator.store_u64(
+                            addr,
+                            u64::from_le_bytes(value[..width].try_into().unwrap()),
+                        );
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -95,15 +120,19 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
                 // load
                 match width {
                     1 => {
+                        load_histogram[0] += 1;
                         let _ = mem_emulator.load_u8(addr);
                     }
                     2 => {
+                        load_histogram[1] += 1;
                         let _ = mem_emulator.load_u16(addr);
                     }
                     4 => {
+                        load_histogram[2] += 1;
                         let _ = mem_emulator.load_u32(addr);
                     }
                     8 => {
+                        load_histogram[3] += 1;
                         let _ = mem_emulator.load_u64(addr);
                     }
                     _ => unreachable!(),
@@ -112,6 +141,19 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
             _ => panic!("unknown operation"),
         }
     }
+
+    println!("store");
+    println!(
+        "u8: {}\nu16: {}\nu32: {}\nu64: {}",
+        store_histogram[0], store_histogram[1], store_histogram[2], store_histogram[3]
+    );
+
+    println!();
+    println!("load");
+    println!(
+        "u8: {}\nu16: {}\nu32: {}\nu64: {}",
+        load_histogram[0], load_histogram[1], load_histogram[2], load_histogram[3]
+    );
 }
 
 #[cfg(test)]
