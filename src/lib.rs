@@ -64,6 +64,7 @@ fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {
 pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulator: &mut M) {
     let file = File::open(file_path).unwrap();
     let mut reader = BufReader::new(file);
+    // let mut reader = BufReader::with_capacity(4 * 1024 * 1024, file);
 
     let mut header = [0_u8; 10];
 
