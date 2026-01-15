@@ -1,4 +1,7 @@
-use std::{collections::HashMap, hash::BuildHasher};
+use std::{
+    collections::HashMap,
+    hash::{BuildHasher, RandomState},
+};
 
 use crate::MemoryEmulator;
 
@@ -13,10 +16,12 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
+type SipHash = RandomState;
 type AHash = ahash::RandomState;
 type FxHash = fxhash::FxBuildHasher;
 type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
 
+pub type PagedMemoryDefault = PagedMemory<SipHash>;
 pub type PagedMemoryAHash = PagedMemory<AHash>;
 pub type PagedMemoryFxHash = PagedMemory<FxHash>;
 pub type PagedMemoryNoHashU64 = PagedMemory<NoHashU64>;
