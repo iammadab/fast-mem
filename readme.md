@@ -35,8 +35,27 @@ Noop: Exec Block
 30.956185228s
 ```
 
-
+Buffering Experiments
 - I increased the `BuffReader` capacity from 8KiB to 4MiB
 - `read()` syscall count dropped from 5,362,938 -> 10,481
 - total kernel time remained roughly 12 - 15 seconds across runs
 - this suggests the current bottle neck is not syscall frequency alone
+
+Using mmap
+ - I realized I was doing a lot of unnecessary copies
+ - disk -> page cache (kernel) -> user buffer -> small parsing buffers
+ - 44GB worth of data has to go through that pipeline
+ - that is a lot of data movement!!!
+ - mmap allows the process to map the trace file directly into its address space and parse in place
+ - but this lead to significantly more page faults
+ - the new lower bound is roughly 18 - 19s
+
+ ```shell
+```
+```
+Noop: Fib
+481.295182ms
+Noop: Exec Block
+18.303799505s
+```
+```
