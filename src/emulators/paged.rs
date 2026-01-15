@@ -1,4 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasher};
+
+use fxhash::FxBuildHasher;
 
 use crate::MemoryEmulator;
 
@@ -13,12 +15,20 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
+type AHash = ahash::RandomState;
+type FxHash = fxhash::FxBuildHasher;
+type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
+
+pub type PagedMemoryAHash = PagedMemory<AHash>;
+pub type PagedMemoryFxHash = PagedMemory<FxHash>;
+pub type PagedMemoryNoHashU64 = PagedMemory<NoHashU64>;
+
 #[derive(Default)]
-pub struct Memory {
-    pages: HashMap<u64, Page>,
+pub struct PagedMemory<S: BuildHasher> {
+    pages: HashMap<u64, Page, S>,
 }
 
-impl MemoryEmulator for Memory {
+impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
     fn load_u64(&self, addr: u64) -> u64 {
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)
@@ -55,7 +65,7 @@ impl MemoryEmulator for Memory {
     }
 }
 
-impl Memory {
+impl<S: BuildHasher> PagedMemory<S> {
     /// Return the page index given the address
     #[inline]
     fn page_idx(addr: u64) -> u64 {
