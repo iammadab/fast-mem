@@ -5,7 +5,7 @@ use std::{
 
 pub mod paged;
 
-trait MemoryEmulator {
+pub trait MemoryEmulator {
     fn load_u8(&self, addr: u64) -> u8;
     fn load_u16(&self, addr: u64) -> u16;
     fn load_u32(&self, addr: u64) -> u32;
