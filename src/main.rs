@@ -12,6 +12,10 @@ fn main() {
     // bench_fib("Paged Memory: Fib", paged::Memory::default());
     // bench_exec_block("Paged Memory: Exec Block", paged::PagedMemory::default());
 
+    bench_fib("(Fib) Paged Memory: Ahash", PagedMemoryAHash::default());
+    bench_fib("(Fib) Paged Memory: FxHash", PagedMemoryFxHash::default());
+    bench_fib("(Fib) Paged Memory: Ahash", PagedMemoryNoHashU64::default());
+
     bench_exec_block("Paged Memory: Ahash", PagedMemoryAHash::default());
     bench_exec_block("Paged Memory: FxHash", PagedMemoryFxHash::default());
     bench_exec_block("Paged Memory: Ahash", PagedMemoryNoHashU64::default());
