@@ -4,14 +4,16 @@ A high-performance emulator for a 2⁶⁴-byte addressable memory space, tested 
 
 #### Worklog
 
-Benching against
-- Fib (1.2G)
-- ExecBlock (44G)
+The emulator is benchmarked against two workloads
+- Fib - 1.2 GB trace
+- ExecBloc - 44 GB trace
 
 Paged Memory
 - splits the address space into 52 and 12 bits
-- each page has (2^12) 4096 entries and we have 2^52 (roughly 4 quadrillion) pages
-- initial implementation has the following benchmark
+- uses KiB pages (2^12 entries per page)
+- supports up to 2^52 pages (~ 4 quadrillion possible pages)
+
+Initial benchmark results:
 
 ```shell
 Paged Memory: Fib
@@ -21,10 +23,10 @@ Paged Memory: Exec Block
 ```
 
 Noop Memory
-- needed to see how much of this time was coming from the paged implementation 
-- vs overhead of reading the file 
-- Noop only decodes the memory operation, doesn't actually track state
-- so this represents a lower bound
+- to understand how much time is attributable to the paged memory implementation
+  versus trace replay overhead, I added the Noop memory backend
+  - decodes memory operations but does not store or load state
+  - provides a lower bound on replay cost
 
 ```shell
 Noop: Fib
@@ -33,5 +35,8 @@ Noop: Exec Block
 30.956185228s
 ```
 
-- too slow
 
+- I increased the `BuffReader` capacity from 8KiB to 4MiB
+- `read()` syscall count dropped from 5,362,938 -> 10,481
+- total kernel time remained roughly 12 - 15 seconds across runs
+- this suggests the current bottle neck is not syscall frequency alone
