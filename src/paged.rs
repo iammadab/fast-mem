@@ -14,7 +14,7 @@ const MAX_ADDR: u64 = u64::MAX;
 type Page = Box<[u8; PAGE_SIZE]>;
 
 #[derive(Default)]
-pub(crate) struct Memory {
+pub struct Memory {
     pages: HashMap<u64, Page>,
 }
 

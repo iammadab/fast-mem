@@ -3,7 +3,7 @@ use std::{
     io::{BufReader, Read},
 };
 
-mod paged;
+pub mod paged;
 
 trait MemoryEmulator {
     fn load_u8(&self, addr: u64) -> u8;
@@ -61,7 +61,7 @@ fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {
     assert_eq!(mem.load_u32(base), 0x1234_5678);
 }
 
-fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulator: &mut M) {
+pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulator: &mut M) {
     let file = File::open(file_path).unwrap();
     let mut reader = BufReader::new(file);
 
@@ -85,9 +85,9 @@ fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulato
                     2 => mem_emulator
                         .store_u16(addr, u16::from_le_bytes(value[..width].try_into().unwrap())),
                     4 => mem_emulator
-                        .store_u16(addr, u16::from_le_bytes(value[..width].try_into().unwrap())),
+                        .store_u32(addr, u32::from_le_bytes(value[..width].try_into().unwrap())),
                     8 => mem_emulator
-                        .store_u16(addr, u16::from_le_bytes(value[..width].try_into().unwrap())),
+                        .store_u64(addr, u64::from_le_bytes(value[..width].try_into().unwrap())),
                     _ => unreachable!(),
                 }
             }
