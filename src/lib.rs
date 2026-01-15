@@ -58,10 +58,11 @@ fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_memory_emulator;
+    use crate::{paged, test_memory_emulator};
 
     #[test]
     fn test_mem_emulator_correctness() {
-        // test_memory_emulator();
+        let paged_mem = paged::Memory::default();
+        test_memory_emulator(paged_mem);
     }
 }
