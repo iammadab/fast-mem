@@ -3,7 +3,7 @@ use std::{
     io::{BufReader, Read},
 };
 
-pub mod paged;
+mod emulators;
 
 pub trait MemoryEmulator {
     fn load_u8(&self, addr: u64) -> u8;
