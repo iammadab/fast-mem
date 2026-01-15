@@ -90,3 +90,15 @@ Paged Memory: Default
 
 - FxHash was consistently faster reducing exec block time from ~54s to ~35s
 - in the future it might be worthwhile to design a hash function for my specific use case
+
+Reducing Hashmap Accesses
+- going to focus on reducing the number of times the hashmap gets hit.
+- currently every memory operation hits the hashmap
+- I did a quick count of the memory operations:
+  - fib has 117,000,007 memory operations 
+  - exec_block has 4,160,787,522 memory operations
+- we hit the hashmap for every single one of these operations
+
+- one idea is to store a pointer to the last page
+- here we are relying on the fact that we are not just doing one operation on every page open
+- but that we'd do a couple operations per page

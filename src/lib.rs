@@ -91,6 +91,8 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 
     let mut data = ReplayIter { data: &mmap };
 
+    let mut count: u64 = 0;
+
     loop {
         let header = match data.take(10) {
             Some(h) => h,
@@ -131,7 +133,11 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
             },
             _ => panic!("unknown operation"),
         }
+
+        count = count.checked_add(1).unwrap();
     }
+
+    println!("total ops: {}", count);
 }
 
 #[cfg(test)]
