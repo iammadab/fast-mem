@@ -14,7 +14,7 @@ const MAX_ADDR: u64 = u64::MAX;
 type Page = Box<[u8; PAGE_SIZE]>;
 
 #[derive(Default)]
-pub(crate) struct Memory {
+pub struct Memory {
     pages: HashMap<u64, Page>,
 }
 
@@ -81,12 +81,6 @@ impl Memory {
 
     pub(crate) fn read_n_bytes_const<const N: usize>(&self, addr: u64) -> [u8; N] {
         let mut out = [0u8; N];
-        self.read_into(addr, &mut out);
-        out
-    }
-
-    pub(crate) fn read_n_bytes(&self, addr: u64, len: usize) -> Vec<u8> {
-        let mut out = vec![0u8; len];
         self.read_into(addr, &mut out);
         out
     }
