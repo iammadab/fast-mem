@@ -3,6 +3,8 @@ use std::{
     io::{BufReader, Read},
 };
 
+use memmap2::Mmap;
+
 pub mod emulators;
 
 pub trait MemoryEmulator {
@@ -61,29 +63,48 @@ fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {
     assert_eq!(mem.load_u32(base), 0x1234_5678);
 }
 
-pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulator: &mut M) {
-    let file = File::open(file_path).unwrap();
-    let mut reader = BufReader::new(file);
-    // let mut reader = BufReader::with_capacity(4 * 1024 * 1024, file);
+struct ReplayIter<'a> {
+    data: &'a [u8],
+}
 
-    let mut header = [0_u8; 10];
-
-    loop {
-        match reader.read_exact(&mut header) {
-            Ok(_) => {}
-            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
-            Err(e) => panic!("failed to read header: {}", e),
+impl<'a> ReplayIter<'a> {
+    #[inline]
+    fn take(&mut self, n: usize) -> Option<&'a [u8]> {
+        if self.data.len() < n {
+            return None;
         }
 
-        let op = header[0];
+        let (head, tail) = self.data.split_at(n);
+        self.data = tail;
+        Some(head)
+    }
+}
+
+pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emulator: &mut M) {
+    let file = File::open(file_path).unwrap();
+    let mmap = unsafe { Mmap::map(&file).expect("mmap failed") };
+
+    unsafe {
+        libc::madvise(
+            mmap.as_ptr() as *mut libc::c_void,
+            mmap.len(),
+            libc::MADV_SEQUENTIAL | libc::MADV_WILLNEED,
+        );
+    }
+
+    let mut data = ReplayIter { data: &mmap };
+
+    loop {
+        let header = match data.take(10) {
+            Some(h) => h,
+            None => break,
+        };
         let width = header[1] as usize;
         let addr = u64::from_le_bytes(header[2..10].try_into().unwrap());
 
-        match op {
+        match header[0] {
             1 => {
-                // store
-                let mut value = [0_u8; 8];
-                reader.read_exact(&mut value[..width]).unwrap();
+                let value = data.take(width).unwrap();
 
                 match width {
                     1 => mem_emulator.store_u8(addr, value[0]),
@@ -96,24 +117,21 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
                     _ => unreachable!(),
                 }
             }
-            2 => {
-                // load
-                match width {
-                    1 => {
-                        let _ = mem_emulator.load_u8(addr);
-                    }
-                    2 => {
-                        let _ = mem_emulator.load_u16(addr);
-                    }
-                    4 => {
-                        let _ = mem_emulator.load_u32(addr);
-                    }
-                    8 => {
-                        let _ = mem_emulator.load_u64(addr);
-                    }
-                    _ => unreachable!(),
+            2 => match width {
+                1 => {
+                    let _ = mem_emulator.load_u8(addr);
                 }
-            }
+                2 => {
+                    let _ = mem_emulator.load_u16(addr);
+                }
+                4 => {
+                    let _ = mem_emulator.load_u32(addr);
+                }
+                8 => {
+                    let _ = mem_emulator.load_u64(addr);
+                }
+                _ => unreachable!(),
+            },
             _ => panic!("unknown operation"),
         }
     }
