@@ -1,2 +1,4 @@
 /target
 mem_bin
+perf.data
+perf*.old
