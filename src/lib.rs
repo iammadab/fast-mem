@@ -3,7 +3,7 @@ use std::{
     io::{BufReader, Read},
 };
 
-pub mod paged;
+pub mod emulators;
 
 pub trait MemoryEmulator {
     fn load_u8(&self, addr: u64) -> u8;
@@ -120,7 +120,7 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 
 #[cfg(test)]
 mod tests {
-    use crate::{paged, test_memory_emulator};
+    use crate::{emulators::paged, test_memory_emulator};
 
     #[test]
     fn test_mem_emulator_correctness() {
