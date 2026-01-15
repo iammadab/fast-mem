@@ -4,10 +4,10 @@ use fast_mem::emulators::paged;
 use fast_mem::replay_mem_operations;
 
 fn main() {
-    bench_fib("Noop: Fib", NoopMem::default());
-    bench_exec_block("Noop: Exec Block", NoopMem::default());
+    // bench_fib("Noop: Fib", NoopMem::default());
+    // bench_exec_block("Noop: Exec Block", NoopMem::default());
 
-    bench_fib("Paged Memory: Fib", paged::Memory::default());
+    // bench_fib("Paged Memory: Fib", paged::Memory::default());
     bench_exec_block("Paged Memory: Exec Block", paged::Memory::default());
 }
 
