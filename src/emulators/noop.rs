@@ -1,6 +1,7 @@
 use crate::MemoryEmulator;
 
-struct NoopMem {}
+#[derive(Default)]
+pub struct NoopMem {}
 
 impl MemoryEmulator for NoopMem {
     fn load_u8(&self, _addr: u64) -> u8 {
