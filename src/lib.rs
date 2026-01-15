@@ -1,3 +1,5 @@
+mod paged;
+
 trait MemoryEmulator {
     fn load_u8(&self, addr: u64) -> u8;
     fn load_u16(&self, addr: u64) -> u16;
@@ -52,4 +54,15 @@ fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {
     mem.store_u8(base + 2, 0x34);
     mem.store_u8(base + 3, 0x12);
     assert_eq!(mem.load_u32(base), 0x1234_5678);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{paged, test_memory_emulator};
+
+    #[test]
+    fn test_mem_emulator_correctness() {
+        let paged_mem = paged::Memory::default();
+        test_memory_emulator(paged_mem);
+    }
 }
