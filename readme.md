@@ -56,3 +56,37 @@ Noop: Fib
 Noop: Exec Block
 18.303799505s
 ```
+
+
+Different Hash Functions
+- the hot path in perf point to `HashMap::get` as a bottleneck
+- I suspected that the hash choice might matter a lot
+- trying out different hash functions I get the following benchmarks
+
+```shell
+
+Noop: Fib
+485.764666ms
+(Fib) Paged Memory: Ahash
+523.321286ms
+(Fib) Paged Memory: FxHash
+465.683205ms
+(Fib) Paged Memory: NoHashU64
+466.830222ms
+(Fib) Paged Memory: Default
+1.026691619s
+
+Noop: Exec Block
+18.138251986s
+Paged Memory: Ahash
+37.702665492s
+Paged Memory: FxHash
+35.639297503s
+Paged Memory: NoHashU64
+46.41599245s
+Paged Memory: Default
+54.408217085s
+```
+
+- FxHash was consistently faster reducing exec block time from ~54s to ~35s
+- in the future it might be worthwhile to design a hash function for my specific use case

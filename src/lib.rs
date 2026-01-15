@@ -136,11 +136,15 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 
 #[cfg(test)]
 mod tests {
-    use crate::{emulators::paged, test_memory_emulator};
+    use crate::{
+        emulators::paged::{PagedMemoryAHash, PagedMemoryFxHash, PagedMemoryNoHashU64},
+        test_memory_emulator,
+    };
 
     #[test]
     fn test_mem_emulator_correctness() {
-        let paged_mem = paged::Memory::default();
-        test_memory_emulator(paged_mem);
+        test_memory_emulator(PagedMemoryAHash::default());
+        test_memory_emulator(PagedMemoryFxHash::default());
+        test_memory_emulator(PagedMemoryNoHashU64::default());
     }
 }

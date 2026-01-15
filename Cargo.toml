@@ -7,8 +7,12 @@ edition = "2024"
 debug = true
 lto = "fat"
 panic = "abort"
-codegen-units = 1
+strip = false
+opt-level = 3
 
 [dependencies]
+ahash = "0.8.12"
+fxhash = "0.2.1"
 libc = "0.2.180"
 memmap2 = "0.9.9"
+nohash-hasher = "0.2.0"
