@@ -1,7 +1,5 @@
 use std::{collections::HashMap, hash::BuildHasher};
 
-use fxhash::FxBuildHasher;
-
 use crate::MemoryEmulator;
 
 /// Number of bits to describe entries in a page
