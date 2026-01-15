@@ -14,11 +14,14 @@ fn main() {
 
     bench_fib("(Fib) Paged Memory: Ahash", PagedMemoryAHash::default());
     bench_fib("(Fib) Paged Memory: FxHash", PagedMemoryFxHash::default());
-    bench_fib("(Fib) Paged Memory: Ahash", PagedMemoryNoHashU64::default());
+    bench_fib(
+        "(Fib) Paged Memory: NoHashU64",
+        PagedMemoryNoHashU64::default(),
+    );
 
     bench_exec_block("Paged Memory: Ahash", PagedMemoryAHash::default());
     bench_exec_block("Paged Memory: FxHash", PagedMemoryFxHash::default());
-    bench_exec_block("Paged Memory: Ahash", PagedMemoryNoHashU64::default());
+    bench_exec_block("Paged Memory: NoHashU64", PagedMemoryNoHashU64::default());
 }
 
 fn bench_exec_block<M: MemoryEmulator>(label: &'static str, emulator: M) {
