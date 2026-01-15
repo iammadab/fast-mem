@@ -85,27 +85,13 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
                 reader.read_exact(&mut value[..width]).unwrap();
 
                 match width {
-                    1 => {
-                        mem_emulator.store_u8(addr, value[0]);
-                    }
-                    2 => {
-                        mem_emulator.store_u16(
-                            addr,
-                            u16::from_le_bytes(value[..width].try_into().unwrap()),
-                        );
-                    }
-                    4 => {
-                        mem_emulator.store_u32(
-                            addr,
-                            u32::from_le_bytes(value[..width].try_into().unwrap()),
-                        );
-                    }
-                    8 => {
-                        mem_emulator.store_u64(
-                            addr,
-                            u64::from_le_bytes(value[..width].try_into().unwrap()),
-                        );
-                    }
+                    1 => mem_emulator.store_u8(addr, value[0]),
+                    2 => mem_emulator
+                        .store_u16(addr, u16::from_le_bytes(value[..width].try_into().unwrap())),
+                    4 => mem_emulator
+                        .store_u32(addr, u32::from_le_bytes(value[..width].try_into().unwrap())),
+                    8 => mem_emulator
+                        .store_u64(addr, u64::from_le_bytes(value[..width].try_into().unwrap())),
                     _ => unreachable!(),
                 }
             }
