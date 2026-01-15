@@ -11,5 +11,7 @@ strip = false
 opt-level = 3
 
 [dependencies]
+ahash = "0.8.12"
+fxhash = "0.2.1"
 libc = "0.2.180"
 memmap2 = "0.9.9"
