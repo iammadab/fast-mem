@@ -85,12 +85,6 @@ impl Memory {
         out
     }
 
-    pub(crate) fn read_n_bytes(&self, addr: u64, len: usize) -> Vec<u8> {
-        let mut out = vec![0u8; len];
-        self.read_into(addr, &mut out);
-        out
-    }
-
     /// Read n contiguous bytes from memory
     /// assumes that out is zeroed out
     fn read_into(&self, addr: u64, out: &mut [u8]) {
