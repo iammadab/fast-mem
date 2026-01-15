@@ -51,11 +51,8 @@ Using mmap
  - the new lower bound is roughly 18 - 19s
 
  ```shell
-```
-```
 Noop: Fib
 481.295182ms
 Noop: Exec Block
 18.303799505s
-```
 ```
