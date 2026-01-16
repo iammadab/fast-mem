@@ -1,6 +1,6 @@
 use std::{collections::HashMap, ptr::NonNull};
 
-use crate::named_hasher::NamedHasher;
+use crate::{MemoryEmulator, named_hasher::NamedHasher};
 
 /// Number of bits to describe entries in a page
 const PAGE_SHIFT: u64 = 12;
@@ -31,4 +31,84 @@ impl<S: NamedHasher, const N: usize> Default for PagedMemoryCacheLine<S, N> {
             cache: [None; N],
         }
     }
+}
+
+impl<S: NamedHasher, const N: usize> MemoryEmulator for PagedMemoryCacheLine<S, N> {
+    fn name(&self) -> String {
+        format!("PagedMemoryCacheLine({})", S::NAME)
+    }
+
+    fn load_u64(&mut self, addr: u64) -> u64 {
+        let bytes = self.read_n_bytes_const::<8>(addr);
+        u64::from_le_bytes(bytes)
+    }
+
+    fn load_u32(&mut self, addr: u64) -> u32 {
+        let bytes = self.read_n_bytes_const::<4>(addr);
+        u32::from_le_bytes(bytes)
+    }
+
+    fn load_u16(&mut self, addr: u64) -> u16 {
+        let bytes = self.read_n_bytes_const::<2>(addr);
+        u16::from_le_bytes(bytes)
+    }
+
+    fn load_u8(&mut self, addr: u64) -> u8 {
+        self.read_n_bytes_const::<1>(addr)[0]
+    }
+
+    fn store_u64(&mut self, addr: u64, value: u64) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u32(&mut self, addr: u64, value: u32) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u16(&mut self, addr: u64, value: u16) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u8(&mut self, addr: u64, value: u8) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn finish(&self) {
+        #[cfg(feature = "cache_stats")]
+        println!(
+            "cache hit: {}\ncache miss: {}\ntotal: {}",
+            self.cache_hit,
+            self.cache_miss,
+            self.cache_hit + self.cache_miss
+        );
+    }
+}
+
+impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {
+    /// Return the page index given the address
+    #[inline]
+    pub fn page_idx(addr: u64) -> u64 {
+        // addr = [PAGE_ID][PAGE_SHIFT]
+        addr >> PAGE_SHIFT
+    }
+
+    /// Return the entry index within a page
+    /// given an address
+    #[inline]
+    pub fn page_offset(addr: u64) -> usize {
+        (addr & PAGE_MASK) as usize
+    }
+
+    pub(crate) fn read_n_bytes_const<const N: usize>(&mut self, addr: u64) -> [u8; N] {
+        let mut out = [0u8; N];
+        self.read_into(addr, &mut out);
+        out
+    }
+}
+
+/// Map a page_id to a cache index
+/// this is a control lever as the distribution of page_id's
+/// can affect the cache_hit count
+fn cache_index(page_id: u64, capacity: usize) -> usize {
+    (page_id as usize) & (capacity - 1)
 }
