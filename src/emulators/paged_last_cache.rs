@@ -132,7 +132,7 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
         entry
     }
 
-    fn page_ptr(&mut self, page_id: u64) -> Option<&mut [u8; PAGE_SIZE]> {
+    fn page_ptr(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
         if self.last_page_id == Some(page_id) {
             if let Some(mut ptr) = self.last_page_ptr {
                 #[cfg(feature = "cache_stats")]
@@ -149,7 +149,7 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
         }
 
         let page = self.pages.get_mut(&page_id)?;
-        let ptr = NonNull::from(page.as_mut());
+        let ptr = NonNull::from(page.as_ref());
 
         self.last_page_id = Some(page_id);
         self.last_page_ptr = Some(ptr);
