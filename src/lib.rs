@@ -5,6 +5,7 @@ use memmap2::Mmap;
 use crate::emulators::paged::{PagedMemory, PagedMemoryFxHash};
 
 pub mod emulators;
+pub mod named_hasher;
 
 pub trait MemoryEmulator {
     fn load_u8(&mut self, addr: u64) -> u8;
