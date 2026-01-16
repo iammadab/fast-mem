@@ -30,24 +30,24 @@ fn main() {
     // bench_exec_block(PagedMemoryCacheLastFxHash::default());
     // bench_exec_block(PagedMemoryCacheLastNoHashU64::default());
 
-    bench_exec_block(&mut PagedMemoryCacheLastFxHash::default());
+    bench_exec_block(PagedMemoryCacheLastFxHash::default());
 }
 
-fn bench_exec_block<M: MemoryEmulator>(emulator: &mut M) {
+fn bench_exec_block<M: MemoryEmulator>(emulator: M) {
     let label = format!("{}: exec_block", emulator.name());
     bench_memory_replay(label, "mem_bin/mem-exec-block-gc.bin", emulator);
 }
-
-fn bench_fib<M: MemoryEmulator>(emulator: &mut M) {
+fn bench_fib<M: MemoryEmulator>(emulator: M) {
     let label = format!("{}: fib", emulator.name());
     bench_memory_replay(label, "mem_bin/mem-fib-gc.bin", emulator);
 }
 
 /// Time a memory emulator against a replay file
-fn bench_memory_replay<M: MemoryEmulator>(label: String, path: &'static str, emulator: &mut M) {
+fn bench_memory_replay<M: MemoryEmulator>(label: String, path: &'static str, mut emulator: M) {
     let start = std::time::Instant::now();
     println!("{}", label);
-    replay_mem_operations(path, emulator);
+    replay_mem_operations(path, &mut emulator);
     let duration = start.elapsed();
     println!("{:?}", duration);
+    emulator.finish();
 }

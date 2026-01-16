@@ -65,6 +65,8 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemory<S> {
     fn store_u8(&mut self, addr: u64, value: u8) {
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
+
+    fn finish(&self) {}
 }
 
 impl<S: NamedHasher> PagedMemory<S> {
