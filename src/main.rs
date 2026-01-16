@@ -3,7 +3,10 @@ use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
-use fast_mem::emulators::paged_last_cache::{PagedMemoryCacheLast, PagedMemoryCacheLastDefault};
+use fast_mem::emulators::paged_last_cache::{
+    PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
+    PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
+};
 use fast_mem::replay_mem_operations;
 
 fn main() {
@@ -17,6 +20,33 @@ fn main() {
     bench_exec_block(
         "PageMemoryLastCache: Exec Block",
         PagedMemoryCacheLastDefault::default(),
+    );
+
+    bench_fib(
+        "PageMemoryLastCacheAHash: Fib",
+        PagedMemoryCacheLastAHash::default(),
+    );
+    bench_exec_block(
+        "PageMemoryLastCacheAHash: Exec Block",
+        PagedMemoryCacheLastAHash::default(),
+    );
+
+    bench_fib(
+        "PageMemoryLastCacheFxHash: Fib",
+        PagedMemoryCacheLastAHash::default(),
+    );
+    bench_exec_block(
+        "PageMemoryLastCacheFxHash: Exec Block",
+        PagedMemoryCacheLastFxHash::default(),
+    );
+
+    bench_fib(
+        "PageMemoryLastCacheNoHashU64: Fib",
+        PagedMemoryCacheLastNoHashU64::default(),
+    );
+    bench_exec_block(
+        "PageMemoryLastCacheNoHashU64: Exec Block",
+        PagedMemoryCacheLastNoHashU64::default(),
     );
 
     // bench_fib("(Fib) Paged Memory: FxHash", PagedMemoryFxHash::default());
