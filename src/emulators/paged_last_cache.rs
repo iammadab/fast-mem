@@ -1,7 +1,6 @@
-use std::{
-    collections::HashMap,
-    hash::{BuildHasher, RandomState},
-};
+use std::{collections::HashMap, hash::BuildHasher, ptr::NonNull};
+
+use ahash::RandomState;
 
 use crate::MemoryEmulator;
 
@@ -21,17 +20,19 @@ type AHash = ahash::RandomState;
 type FxHash = fxhash::FxBuildHasher;
 type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
 
-pub type PagedMemoryDefault = PagedMemory<SipHash>;
-pub type PagedMemoryAHash = PagedMemory<AHash>;
-pub type PagedMemoryFxHash = PagedMemory<FxHash>;
-pub type PagedMemoryNoHashU64 = PagedMemory<NoHashU64>;
+pub type PagedMemoryCacheLastDefault = PagedMemoryCacheLast<SipHash>;
+pub type PagedMemoryCacheLastAHash = PagedMemoryCacheLast<AHash>;
+pub type PagedMemoryCacheLastFxHash = PagedMemoryCacheLast<FxHash>;
+pub type PagedMemoryCacheLastNoHashU64 = PagedMemoryCacheLast<NoHashU64>;
 
 #[derive(Default)]
-pub struct PagedMemory<S: BuildHasher> {
+pub struct PagedMemoryCacheLast<S: BuildHasher> {
     pages: HashMap<u64, Page, S>,
+    last_page_id: Option<u64>,
+    last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
 }
 
-impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
+impl<S: BuildHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     fn load_u64(&mut self, addr: u64) -> u64 {
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)
@@ -68,7 +69,7 @@ impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
     }
 }
 
-impl<S: BuildHasher> PagedMemory<S> {
+impl<S: BuildHasher> PagedMemoryCacheLast<S> {
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {
@@ -83,36 +84,54 @@ impl<S: BuildHasher> PagedMemory<S> {
         (addr & PAGE_MASK) as usize
     }
 
-    /// Returns a mutable reference to a page given an address
-    /// lazy allocates the page if needed
-    #[inline]
-    fn ensure_page(&mut self, idx: u64) -> &mut Page {
-        self.pages
-            .entry(idx)
-            .or_insert_with(|| Box::new([0; PAGE_SIZE]))
-    }
-
-    pub(crate) fn read_n_bytes_const<const N: usize>(&self, addr: u64) -> [u8; N] {
+    pub(crate) fn read_n_bytes_const<const N: usize>(&mut self, addr: u64) -> [u8; N] {
         let mut out = [0u8; N];
         self.read_into(addr, &mut out);
         out
     }
 
-    /// Read n contiguous bytes from memory
-    /// assumes that out is zeroed out
-    fn read_into(&self, addr: u64, out: &mut [u8]) {
+    fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
+        if self.last_page_id == Some(page_id) {
+            if let Some(mut ptr) = self.last_page_ptr {
+                return unsafe { ptr.as_mut() };
+            }
+        }
+
+        let entry = self
+            .pages
+            .entry(page_id)
+            .or_insert_with(|| Box::new([0; PAGE_SIZE]));
+        let ptr = NonNull::from(entry.as_mut());
+
+        self.last_page_id = Some(page_id);
+        self.last_page_ptr = Some(ptr);
+        entry
+    }
+
+    fn page_ptr(&mut self, page_id: u64) -> Option<&mut [u8; PAGE_SIZE]> {
+        if self.last_page_id == Some(page_id) {
+            if let Some(mut ptr) = self.last_page_ptr {
+                return Some(unsafe { ptr.as_mut() });
+            }
+        }
+
+        let page = self.pages.get_mut(&page_id)?;
+        let ptr = NonNull::from(page.as_mut());
+
+        self.last_page_id = Some(page_id);
+        self.last_page_ptr = Some(ptr);
+        Some(page)
+    }
+
+    fn read_into(&mut self, addr: u64, out: &mut [u8]) {
         let len = out.len();
         if len == 0 {
             return;
         }
 
-        let end = addr
+        let _ = addr
             .checked_add(len as u64 - 1)
             .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
-
-        if end > MAX_ADDR {
-            panic!("write out of range: 0x{:x}", addr);
-        }
 
         let mut curr_addr = addr;
         let mut bytes_left = len;
@@ -124,30 +143,24 @@ impl<S: BuildHasher> PagedMemory<S> {
 
             let chunk = bytes_left.min(PAGE_SIZE - offset);
 
-            if let Some(page) = self.pages.get(&idx) {
+            if let Some(page) = self.page_ptr(idx) {
                 out[dst_off..dst_off + chunk].copy_from_slice(&page[offset..offset + chunk]);
             } // else leave as zeros
 
             curr_addr += chunk as u64;
             dst_off += chunk;
-            bytes_left -= chunk
+            bytes_left -= chunk;
         }
     }
 
-    /// Write n contiguous bytes into memory
-    /// Handles cross page writing
-    pub(crate) fn write_n_bytes(&mut self, addr: u64, bytes: &[u8]) {
+    fn write_n_bytes(&mut self, addr: u64, bytes: &[u8]) {
         if bytes.is_empty() {
             return;
         }
 
-        let end = addr
+        let _ = addr
             .checked_add(bytes.len() as u64 - 1)
             .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
-
-        if addr > MAX_ADDR || end > MAX_ADDR {
-            panic!("write out of range: 0x{:x}", addr);
-        }
 
         let mut curr_addr = addr;
         let mut bytes_left = bytes.len();
@@ -159,12 +172,28 @@ impl<S: BuildHasher> PagedMemory<S> {
 
             let chunk = bytes_left.min(PAGE_SIZE - offset);
 
-            let page = self.ensure_page(idx);
-            page[offset..(offset + chunk)].copy_from_slice(&bytes[src_off..(src_off + chunk)]);
+            let page = self.page_ptr_mut(idx);
+            page[offset..offset + chunk].copy_from_slice(&bytes[src_off..src_off + chunk]);
 
             curr_addr += chunk as u64;
             src_off += chunk;
             bytes_left -= chunk;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::emulators::paged_last_cache::{
+        PAGE_SIZE, PagedMemoryCacheLast, PagedMemoryCacheLastDefault,
+    };
+
+    #[test]
+    fn page_reuse_result_in_same_pointer() {
+        let mut mem = PagedMemoryCacheLastDefault::default();
+        let p1 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
+        let p2 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
+
+        assert_eq!(p1, p2);
     }
 }

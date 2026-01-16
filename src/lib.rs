@@ -7,10 +7,10 @@ use crate::emulators::paged::{PagedMemory, PagedMemoryFxHash};
 pub mod emulators;
 
 pub trait MemoryEmulator {
-    fn load_u8(&self, addr: u64) -> u8;
-    fn load_u16(&self, addr: u64) -> u16;
-    fn load_u32(&self, addr: u64) -> u32;
-    fn load_u64(&self, addr: u64) -> u64;
+    fn load_u8(&mut self, addr: u64) -> u8;
+    fn load_u16(&mut self, addr: u64) -> u16;
+    fn load_u32(&mut self, addr: u64) -> u32;
+    fn load_u64(&mut self, addr: u64) -> u64;
 
     fn store_u8(&mut self, addr: u64, value: u8);
     fn store_u16(&mut self, addr: u64, value: u16);
@@ -149,14 +149,27 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 #[cfg(test)]
 mod tests {
     use crate::{
-        emulators::paged::{PagedMemoryAHash, PagedMemoryFxHash, PagedMemoryNoHashU64},
+        emulators::{
+            paged::{
+                PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
+            },
+            paged_last_cache::{
+                PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
+                PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
+            },
+        },
         test_memory_emulator,
     };
 
     #[test]
     fn test_mem_emulator_correctness() {
+        test_memory_emulator(PagedMemoryDefault::default());
         test_memory_emulator(PagedMemoryAHash::default());
         test_memory_emulator(PagedMemoryFxHash::default());
         test_memory_emulator(PagedMemoryNoHashU64::default());
+        test_memory_emulator(PagedMemoryCacheLastDefault::default());
+        test_memory_emulator(PagedMemoryCacheLastAHash::default());
+        test_memory_emulator(PagedMemoryCacheLastFxHash::default());
+        test_memory_emulator(PagedMemoryCacheLastNoHashU64::default());
     }
 }
