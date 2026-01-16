@@ -2,6 +2,8 @@ use std::fs::File;
 
 use memmap2::Mmap;
 
+use crate::emulators::paged::{PagedMemory, PagedMemoryFxHash};
+
 pub mod emulators;
 
 pub trait MemoryEmulator {
@@ -92,6 +94,7 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
     let mut data = ReplayIter { data: &mmap };
 
     let mut count: u64 = 0;
+    let mut last_id: Option<u64> = None;
 
     loop {
         let header = match data.take(10) {
@@ -100,6 +103,11 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
         };
         let width = header[1] as usize;
         let addr = u64::from_le_bytes(header[2..10].try_into().unwrap());
+
+        if last_id != Some(PagedMemoryFxHash::page_idx(addr)) {
+            count = count.checked_add(1).unwrap();
+            last_id = Some(PagedMemoryFxHash::page_idx(addr));
+        }
 
         match header[0] {
             1 => {
@@ -133,8 +141,6 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
             },
             _ => panic!("unknown operation"),
         }
-
-        count = count.checked_add(1).unwrap();
     }
 
     println!("total ops: {}", count);
