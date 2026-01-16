@@ -149,7 +149,10 @@ pub fn replay_mem_operations<M: MemoryEmulator>(file_path: &'static str, mem_emu
 #[cfg(test)]
 mod tests {
     use crate::{
-        emulators::paged::{PagedMemoryAHash, PagedMemoryFxHash, PagedMemoryNoHashU64},
+        emulators::{
+            paged::{PagedMemoryAHash, PagedMemoryFxHash, PagedMemoryNoHashU64},
+            paged_last_cache::PagedMemoryCacheLast,
+        },
         test_memory_emulator,
     };
 
@@ -158,5 +161,6 @@ mod tests {
         test_memory_emulator(PagedMemoryAHash::default());
         test_memory_emulator(PagedMemoryFxHash::default());
         test_memory_emulator(PagedMemoryNoHashU64::default());
+        test_memory_emulator(PagedMemoryCacheLast::default());
     }
 }
