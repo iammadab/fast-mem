@@ -33,6 +33,10 @@ pub struct PagedMemoryCacheLast<S: BuildHasher> {
 }
 
 impl<S: BuildHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
+    fn name(&self) -> &'static str {
+        "PagedMemCacheLast"
+    }
+
     fn load_u64(&mut self, addr: u64) -> u64 {
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)

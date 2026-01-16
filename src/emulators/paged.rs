@@ -32,6 +32,10 @@ pub struct PagedMemory<S: BuildHasher> {
 }
 
 impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
+    fn name(&self) -> &'static str {
+        "PagedMem"
+    }
+
     fn load_u64(&mut self, addr: u64) -> u64 {
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)

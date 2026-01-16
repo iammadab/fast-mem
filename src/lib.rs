@@ -16,6 +16,8 @@ pub trait MemoryEmulator {
     fn store_u16(&mut self, addr: u64, value: u16);
     fn store_u32(&mut self, addr: u64, value: u32);
     fn store_u64(&mut self, addr: u64, value: u64);
+
+    fn name(&self) -> &'static str;
 }
 
 fn test_memory_emulator<M: MemoryEmulator>(mut mem: M) {

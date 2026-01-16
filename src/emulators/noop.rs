@@ -27,4 +27,8 @@ impl MemoryEmulator for NoopMem {
     fn store_u32(&mut self, _addr: u64, _value: u32) {}
 
     fn store_u64(&mut self, _addr: u64, _value: u64) {}
+
+    fn name(&self) -> &'static str {
+        "NoopMem"
+    }
 }
