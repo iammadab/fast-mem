@@ -145,6 +145,10 @@ mod tests {
             paged::{
                 PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
             },
+            paged_cache_line::{
+                PagedMemoryCacheLineAHash, PagedMemoryCacheLineDefault, PagedMemoryCacheLineFxHash,
+                PagedMemoryCacheLineNoHashU64,
+            },
             paged_last_cache::{
                 PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
                 PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
@@ -163,5 +167,9 @@ mod tests {
         test_memory_emulator(PagedMemoryCacheLastAHash::default());
         test_memory_emulator(PagedMemoryCacheLastFxHash::default());
         test_memory_emulator(PagedMemoryCacheLastNoHashU64::default());
+        test_memory_emulator(PagedMemoryCacheLineDefault::default());
+        test_memory_emulator(PagedMemoryCacheLineAHash::default());
+        test_memory_emulator(PagedMemoryCacheLineFxHash::default());
+        test_memory_emulator(PagedMemoryCacheLineNoHashU64::default());
     }
 }

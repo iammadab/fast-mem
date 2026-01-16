@@ -1,6 +1,9 @@
 use std::{collections::HashMap, ptr::NonNull};
 
-use crate::{MemoryEmulator, named_hasher::NamedHasher};
+use crate::{
+    MemoryEmulator,
+    named_hasher::{AHash, FxHash, NamedHasher, NoHashU64, Sip},
+};
 
 /// Number of bits to describe entries in a page
 const PAGE_SHIFT: u64 = 12;
@@ -12,6 +15,13 @@ const PAGE_MASK: u64 = (PAGE_SIZE as u64) - 1;
 const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
+
+const CACHE_LINES: usize = 4;
+
+pub type PagedMemoryCacheLineDefault = PagedMemoryCacheLine<Sip, CACHE_LINES>;
+pub type PagedMemoryCacheLineAHash = PagedMemoryCacheLine<AHash, CACHE_LINES>;
+pub type PagedMemoryCacheLineFxHash = PagedMemoryCacheLine<FxHash, CACHE_LINES>;
+pub type PagedMemoryCacheLineNoHashU64 = PagedMemoryCacheLine<NoHashU64, CACHE_LINES>;
 
 #[derive(Copy, Clone)]
 struct CacheLine {
@@ -73,15 +83,7 @@ impl<S: NamedHasher, const N: usize> MemoryEmulator for PagedMemoryCacheLine<S, 
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
 
-    fn finish(&self) {
-        #[cfg(feature = "cache_stats")]
-        println!(
-            "cache hit: {}\ncache miss: {}\ntotal: {}",
-            self.cache_hit,
-            self.cache_miss,
-            self.cache_hit + self.cache_miss
-        );
-    }
+    fn finish(&self) {}
 }
 
 impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {

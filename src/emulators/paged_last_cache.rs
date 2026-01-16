@@ -153,6 +153,8 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
             .entry(page_id)
             .or_insert_with(|| Box::new([0; PAGE_SIZE]));
         let ptr = NonNull::from(page.as_ref());
+        // let page = self.pages.get_mut(&page_id)?;
+        // let ptr = NonNull::from(page.as_ref());
 
         self.last_page_id = Some(page_id);
         self.last_page_ptr = Some(ptr);
