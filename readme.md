@@ -92,15 +92,50 @@ Paged Memory: Default
 - in the future it might be worthwhile to design a hash function for my specific use case
 
 Reducing Hashmap Accesses
-- going to focus on reducing the number of times the hashmap gets hit.
+- the next optimization focus is reducing the number of `HashMap` accesses.
 - currently every memory operation hits the hashmap
 - I did a quick count of the memory operations:
   - fib has 117,000,007 memory operations 
   - exec_block has 4,160,787,522 memory operations
-- we hit the hashmap for every single one of these operations
+- with the current design, the `HashMap` is hit once for every one of these operations
 
+Last-Page Caching
 - one idea is to store a pointer to the last page
-- only doing a hashmap access on page transitions
-- counting the number of page transitions I get the following numbers:
+- only perform a hashmap access on page transitions
+- counting the number of page transitions, I get the following numbers:
   - fib performs 3 page transitions
   - exec_block performs 1,443,055,930 page transitions
+- I implemented this and saw practically no improvement:
+
+```shell
+PagedMemCacheLast(SipHash): fib
+1.32553868s
+PagedMemCacheLast(AHash): fib
+550.687916ms
+PagedMemCacheLast(FxHash): fib
+496.418719ms
+PagedMemCacheLast(NoHashU64): fib
+550.409934ms
+
+PagedMemCacheLast(SipHash): exec_block
+49.326271911s
+PagedMemCacheLast(AHash): exec_block
+36.771238637s
+PagedMemCacheLast(FxHash): exec_block
+34.023815799s
+PagedMemCacheLast(NoHashU64): exec_block
+46.605353459s
+```
+
+
+Measuring cache hit and miss
+
+```shell
+PagedMemCacheLast(FxHash): exec_block
+34.927876887s
+cache hit: 613,899,438
+cache miss: 3,546,888,084
+total: 4,160,787,522
+```
+
+- I expected to have only `1,443,055,930` cache misses
