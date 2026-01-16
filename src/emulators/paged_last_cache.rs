@@ -1,8 +1,9 @@
-use std::{collections::HashMap, hash::BuildHasher, ptr::NonNull};
+use std::{collections::HashMap, ptr::NonNull};
 
-use ahash::RandomState;
-
-use crate::MemoryEmulator;
+use crate::{
+    MemoryEmulator,
+    named_hasher::{AHash, FxHash, NamedHasher, NoHashU64, Sip},
+};
 
 /// Number of bits to describe entries in a page
 const PAGE_SHIFT: u64 = 12;
@@ -15,26 +16,21 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
-type SipHash = RandomState;
-type AHash = ahash::RandomState;
-type FxHash = fxhash::FxBuildHasher;
-type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
-
-pub type PagedMemoryCacheLastDefault = PagedMemoryCacheLast<SipHash>;
+pub type PagedMemoryCacheLastDefault = PagedMemoryCacheLast<Sip>;
 pub type PagedMemoryCacheLastAHash = PagedMemoryCacheLast<AHash>;
 pub type PagedMemoryCacheLastFxHash = PagedMemoryCacheLast<FxHash>;
 pub type PagedMemoryCacheLastNoHashU64 = PagedMemoryCacheLast<NoHashU64>;
 
 #[derive(Default)]
-pub struct PagedMemoryCacheLast<S: BuildHasher> {
+pub struct PagedMemoryCacheLast<S: NamedHasher> {
     pages: HashMap<u64, Page, S>,
     last_page_id: Option<u64>,
     last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
 }
 
-impl<S: BuildHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
-    fn name(&self) -> &'static str {
-        "PagedMemCacheLast"
+impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
+    fn name(&self) -> String {
+        format!("PagedMemCacheLast({})", S::NAME)
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
@@ -73,7 +69,7 @@ impl<S: BuildHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 }
 
-impl<S: BuildHasher> PagedMemoryCacheLast<S> {
+impl<S: NamedHasher> PagedMemoryCacheLast<S> {
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {

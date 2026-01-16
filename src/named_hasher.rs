@@ -5,6 +5,7 @@ pub trait NamedHasher: BuildHasher {
 }
 
 type SipHashBuilder = std::collections::hash_map::RandomState;
+#[derive(Default)]
 pub struct Sip(pub SipHashBuilder);
 impl BuildHasher for Sip {
     type Hasher = <SipHashBuilder as BuildHasher>::Hasher;
@@ -17,6 +18,7 @@ impl NamedHasher for Sip {
 }
 
 type AHashBuilder = ahash::RandomState;
+#[derive(Default)]
 pub struct AHash(pub AHashBuilder);
 impl BuildHasher for AHash {
     type Hasher = <AHashBuilder as BuildHasher>::Hasher;
@@ -29,6 +31,7 @@ impl NamedHasher for AHash {
 }
 
 type FxHashBuilder = fxhash::FxBuildHasher;
+#[derive(Default)]
 pub struct FxHash(pub FxHashBuilder);
 impl BuildHasher for FxHash {
     type Hasher = <FxHashBuilder as BuildHasher>::Hasher;
@@ -41,6 +44,7 @@ impl NamedHasher for FxHash {
 }
 
 type NoHashU64Builder = nohash_hasher::BuildNoHashHasher<u64>;
+#[derive(Default)]
 pub struct NoHashU64(pub NoHashU64Builder);
 impl BuildHasher for NoHashU64 {
     type Hasher = <NoHashU64Builder as BuildHasher>::Hasher;

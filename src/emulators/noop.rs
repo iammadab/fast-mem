@@ -28,7 +28,7 @@ impl MemoryEmulator for NoopMem {
 
     fn store_u64(&mut self, _addr: u64, _value: u64) {}
 
-    fn name(&self) -> &'static str {
-        "NoopMem"
+    fn name(&self) -> String {
+        "NoopMem".to_string()
     }
 }

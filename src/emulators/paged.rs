@@ -1,9 +1,9 @@
-use std::{
-    collections::HashMap,
-    hash::{BuildHasher, RandomState},
-};
+use std::collections::HashMap;
 
-use crate::MemoryEmulator;
+use crate::{
+    MemoryEmulator,
+    named_hasher::{AHash, FxHash, NamedHasher, NoHashU64, Sip},
+};
 
 /// Number of bits to describe entries in a page
 const PAGE_SHIFT: u64 = 12;
@@ -16,24 +16,19 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
-type SipHash = RandomState;
-type AHash = ahash::RandomState;
-type FxHash = fxhash::FxBuildHasher;
-type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
-
-pub type PagedMemoryDefault = PagedMemory<SipHash>;
+pub type PagedMemoryDefault = PagedMemory<Sip>;
 pub type PagedMemoryAHash = PagedMemory<AHash>;
 pub type PagedMemoryFxHash = PagedMemory<FxHash>;
 pub type PagedMemoryNoHashU64 = PagedMemory<NoHashU64>;
 
 #[derive(Default)]
-pub struct PagedMemory<S: BuildHasher> {
+pub struct PagedMemory<S: NamedHasher> {
     pages: HashMap<u64, Page, S>,
 }
 
-impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
-    fn name(&self) -> &'static str {
-        "PagedMem"
+impl<S: NamedHasher> MemoryEmulator for PagedMemory<S> {
+    fn name(&self) -> String {
+        format!("PagedMem({})", S::NAME)
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
@@ -72,7 +67,7 @@ impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
     }
 }
 
-impl<S: BuildHasher> PagedMemory<S> {
+impl<S: NamedHasher> PagedMemory<S> {
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {
