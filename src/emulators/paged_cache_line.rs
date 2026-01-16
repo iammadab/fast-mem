@@ -99,8 +99,8 @@ impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {
         (addr & PAGE_MASK) as usize
     }
 
-    pub(crate) fn read_n_bytes_const<const N: usize>(&mut self, addr: u64) -> [u8; N] {
-        let mut out = [0u8; N];
+    pub(crate) fn read_n_bytes_const<const M: usize>(&mut self, addr: u64) -> [u8; M] {
+        let mut out = [0u8; M];
         self.read_into(addr, &mut out);
         out
     }
@@ -121,6 +121,82 @@ impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {
 
         self.cache[c_i] = Some(CacheLine { page_id, ptr });
         entry
+    }
+
+    fn page_ptr(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
+        let c_i = cache_index(page_id, N);
+        if let Some(line) = self.cache[c_i] {
+            if line.page_id == page_id {
+                return Some(unsafe { line.ptr.as_ref() });
+            }
+        }
+
+        let page = self
+            .pages
+            .entry(page_id)
+            .or_insert_with(|| Box::new([0; PAGE_SIZE]));
+        let ptr = NonNull::from(page.as_ref());
+
+        self.cache[c_i] = Some(CacheLine { page_id, ptr });
+        Some(page)
+    }
+
+    fn read_into(&mut self, addr: u64, out: &mut [u8]) {
+        let len = out.len();
+        if len == 0 {
+            return;
+        }
+
+        let _ = addr
+            .checked_add(len as u64 - 1)
+            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+
+        let mut curr_addr = addr;
+        let mut bytes_left = len;
+        let mut dst_off = 0;
+
+        while bytes_left > 0 {
+            let idx = Self::page_idx(curr_addr);
+            let offset = Self::page_offset(curr_addr);
+
+            let chunk = bytes_left.min(PAGE_SIZE - offset);
+
+            if let Some(page) = self.page_ptr(idx) {
+                out[dst_off..dst_off + chunk].copy_from_slice(&page[offset..offset + chunk]);
+            } // else leave as zeros
+
+            curr_addr += chunk as u64;
+            dst_off += chunk;
+            bytes_left -= chunk;
+        }
+    }
+
+    fn write_n_bytes(&mut self, addr: u64, bytes: &[u8]) {
+        if bytes.is_empty() {
+            return;
+        }
+
+        let _ = addr
+            .checked_add(bytes.len() as u64 - 1)
+            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+
+        let mut curr_addr = addr;
+        let mut bytes_left = bytes.len();
+        let mut src_off = 0;
+
+        while bytes_left > 0 {
+            let idx = Self::page_idx(curr_addr);
+            let offset = Self::page_offset(curr_addr);
+
+            let chunk = bytes_left.min(PAGE_SIZE - offset);
+
+            let page = self.page_ptr_mut(idx);
+            page[offset..offset + chunk].copy_from_slice(&bytes[src_off..src_off + chunk]);
+
+            curr_addr += chunk as u64;
+            src_off += chunk;
+            bytes_left -= chunk;
+        }
     }
 }
 
