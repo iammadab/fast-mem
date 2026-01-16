@@ -110,13 +110,9 @@ impl PagedMemoryCacheLast {
             return;
         }
 
-        let end = addr
+        let _ = addr
             .checked_add(len as u64 - 1)
             .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
-
-        if end > MAX_ADDR {
-            panic!("write out of range: 0x{:x}", addr);
-        }
 
         let mut curr_addr = addr;
         let mut bytes_left = len;
@@ -134,6 +130,34 @@ impl PagedMemoryCacheLast {
 
             curr_addr += chunk as u64;
             dst_off += chunk;
+            bytes_left -= chunk;
+        }
+    }
+
+    fn write_n_bytes(&mut self, addr: u64, bytes: &[u8]) {
+        if bytes.is_empty() {
+            return;
+        }
+
+        let _ = addr
+            .checked_add(bytes.len() as u64 - 1)
+            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+
+        let mut curr_addr = addr;
+        let mut bytes_left = bytes.len();
+        let mut src_off = 0;
+
+        while bytes_left > 0 {
+            let idx = Self::page_idx(curr_addr);
+            let offset = Self::page_offset(curr_addr);
+
+            let chunk = bytes_left.min(PAGE_SIZE - offset);
+
+            let page = self.page_ptr_mut(idx);
+            page[offset..offset + chunk].copy_from_slice(&bytes[src_off..src_off + chunk]);
+
+            curr_addr += chunk as u64;
+            src_off += chunk;
             bytes_left -= chunk;
         }
     }
