@@ -3,6 +3,10 @@ use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
+use fast_mem::emulators::paged_cache_line::{
+    PagedMemoryCacheLineAHash, PagedMemoryCacheLineDefault, PagedMemoryCacheLineFxHash,
+    PagedMemoryCacheLineNoHashU64,
+};
 use fast_mem::emulators::paged_last_cache::{
     PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
     PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
@@ -10,27 +14,35 @@ use fast_mem::emulators::paged_last_cache::{
 use fast_mem::replay_mem_operations;
 
 fn main() {
-    bench_fib(PagedMemoryDefault::default());
-    bench_fib(PagedMemoryAHash::default());
-    bench_fib(PagedMemoryFxHash::default());
-    bench_fib(PagedMemoryNoHashU64::default());
-
-    bench_exec_block(PagedMemoryDefault::default());
-    bench_exec_block(PagedMemoryAHash::default());
-    bench_exec_block(PagedMemoryFxHash::default());
-    bench_exec_block(PagedMemoryNoHashU64::default());
-
-    bench_fib(PagedMemoryCacheLastDefault::default());
-    bench_fib(PagedMemoryCacheLastAHash::default());
-    bench_fib(PagedMemoryCacheLastFxHash::default());
-    bench_fib(PagedMemoryCacheLastNoHashU64::default());
-
-    bench_exec_block(PagedMemoryCacheLastDefault::default());
-    bench_exec_block(PagedMemoryCacheLastAHash::default());
-    bench_exec_block(PagedMemoryCacheLastFxHash::default());
-    bench_exec_block(PagedMemoryCacheLastNoHashU64::default());
-
+    // bench_fib(PagedMemoryDefault::default());
+    // bench_fib(PagedMemoryAHash::default());
+    // bench_fib(PagedMemoryFxHash::default());
+    // bench_fib(PagedMemoryNoHashU64::default());
+    //
+    // bench_exec_block(PagedMemoryDefault::default());
+    // bench_exec_block(PagedMemoryAHash::default());
+    // bench_exec_block(PagedMemoryFxHash::default());
+    // bench_exec_block(PagedMemoryNoHashU64::default());
+    //
+    // bench_fib(PagedMemoryCacheLastDefault::default());
+    // bench_fib(PagedMemoryCacheLastAHash::default());
+    // bench_fib(PagedMemoryCacheLastFxHash::default());
+    // bench_fib(PagedMemoryCacheLastNoHashU64::default());
+    //
+    // bench_exec_block(PagedMemoryCacheLastDefault::default());
+    // bench_exec_block(PagedMemoryCacheLastAHash::default());
     // bench_exec_block(PagedMemoryCacheLastFxHash::default());
+    // bench_exec_block(PagedMemoryCacheLastNoHashU64::default());
+
+    bench_fib(PagedMemoryCacheLineDefault::default());
+    bench_fib(PagedMemoryCacheLineAHash::default());
+    bench_fib(PagedMemoryCacheLineFxHash::default());
+    bench_fib(PagedMemoryCacheLineNoHashU64::default());
+
+    bench_exec_block(PagedMemoryCacheLineDefault::default());
+    bench_exec_block(PagedMemoryCacheLineAHash::default());
+    bench_exec_block(PagedMemoryCacheLineFxHash::default());
+    bench_exec_block(PagedMemoryCacheLineNoHashU64::default());
 }
 
 fn bench_exec_block<M: MemoryEmulator>(emulator: M) {

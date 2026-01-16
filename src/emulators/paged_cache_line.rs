@@ -16,7 +16,7 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
-const CACHE_LINES: usize = 4;
+const CACHE_LINES: usize = 1;
 
 pub type PagedMemoryCacheLineDefault = PagedMemoryCacheLine<Sip, CACHE_LINES>;
 pub type PagedMemoryCacheLineAHash = PagedMemoryCacheLine<AHash, CACHE_LINES>;
