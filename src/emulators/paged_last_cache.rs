@@ -139,7 +139,7 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
                 {
                     self.cache_hit += 1
                 }
-                return Some(unsafe { ptr.as_mut() });
+                return Some(unsafe { ptr.as_ref() });
             }
         }
 
