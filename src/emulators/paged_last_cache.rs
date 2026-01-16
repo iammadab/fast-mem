@@ -16,9 +16,9 @@ const MAX_ADDR: u64 = u64::MAX;
 type Page = Box<[u8; PAGE_SIZE]>;
 
 pub struct PagedMemoryCacheLast {
-    paged: HashMap<u64, Page>,
+    pages: HashMap<u64, Page>,
     last_page_id: Option<u64>,
-    last_page_ptr: Option<NonNull<Page>>,
+    last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
 }
 
 impl MemoryEmulator for PagedMemoryCacheLast {
@@ -52,5 +52,41 @@ impl MemoryEmulator for PagedMemoryCacheLast {
 
     fn store_u64(&mut self, addr: u64, value: u64) {
         todo!()
+    }
+}
+
+impl PagedMemoryCacheLast {
+    /// Return the page index given the address
+    #[inline]
+    pub fn page_idx(addr: u64) -> u64 {
+        // addr = [PAGE_ID][PAGE_SHIFT]
+        addr >> PAGE_SHIFT
+    }
+
+    /// Return the entry index within a page
+    /// given an address
+    #[inline]
+    pub fn page_offset(addr: u64) -> usize {
+        (addr & PAGE_MASK) as usize
+    }
+
+    fn page_ptr_mut(&mut self, addr: u64) -> &mut [u8; PAGE_SIZE] {
+        let page_id = Self::page_idx(addr);
+
+        if self.last_page_id == Some(page_id) {
+            if let Some(mut ptr) = self.last_page_ptr {
+                return unsafe { ptr.as_mut() };
+            }
+        }
+
+        let entry = self
+            .pages
+            .entry(page_id)
+            .or_insert_with(|| Box::new([0; PAGE_SIZE]));
+        let ptr = NonNull::from(entry.as_mut());
+
+        self.last_page_id = Some(page_id);
+        self.last_page_ptr = Some(ptr);
+        entry
     }
 }
