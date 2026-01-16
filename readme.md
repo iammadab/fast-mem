@@ -100,5 +100,7 @@ Reducing Hashmap Accesses
 - we hit the hashmap for every single one of these operations
 
 - one idea is to store a pointer to the last page
-- here we are relying on the fact that we are not just doing one operation on every page open
-- but that we'd do a couple operations per page
+- only doing a hashmap access on page transitions
+- counting the number of page transitions I get the following numbers:
+  - fib performs 3 page transitions
+  - exec_block performs 1,443,055,930 page transitions

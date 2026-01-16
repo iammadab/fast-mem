@@ -71,7 +71,7 @@ impl<S: BuildHasher> MemoryEmulator for PagedMemory<S> {
 impl<S: BuildHasher> PagedMemory<S> {
     /// Return the page index given the address
     #[inline]
-    fn page_idx(addr: u64) -> u64 {
+    pub fn page_idx(addr: u64) -> u64 {
         // addr = [PAGE_ID][PAGE_SHIFT]
         addr >> PAGE_SHIFT
     }
@@ -79,7 +79,7 @@ impl<S: BuildHasher> PagedMemory<S> {
     /// Return the entry index within a page
     /// given an address
     #[inline]
-    fn page_offset(addr: u64) -> usize {
+    pub fn page_offset(addr: u64) -> usize {
         (addr & PAGE_MASK) as usize
     }
 
