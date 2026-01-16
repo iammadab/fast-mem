@@ -1,6 +1,6 @@
 use std::hash::BuildHasher;
 
-pub trait NamedHasher: BuildHasher {
+pub trait NamedHasher: BuildHasher + Default {
     const NAME: &'static str;
 }
 
