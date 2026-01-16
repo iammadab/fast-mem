@@ -1,6 +1,6 @@
-use std::ptr::NonNull;
+use std::{collections::HashMap, hash::BuildHasher, ptr::NonNull};
 
-use ahash::HashMap;
+use ahash::RandomState;
 
 use crate::MemoryEmulator;
 
@@ -15,14 +15,24 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
+type SipHash = RandomState;
+type AHash = ahash::RandomState;
+type FxHash = fxhash::FxBuildHasher;
+type NoHashU64 = nohash_hasher::BuildNoHashHasher<u64>;
+
+pub type PagedMemoryCacheLastDefault = PagedMemoryCacheLast<SipHash>;
+pub type PagedMemoryCacheLastAHash = PagedMemoryCacheLast<AHash>;
+pub type PagedMemoryCacheLastFxHash = PagedMemoryCacheLast<FxHash>;
+pub type PagedMemoryCacheLastNoHashU64 = PagedMemoryCacheLast<NoHashU64>;
+
 #[derive(Default)]
-pub struct PagedMemoryCacheLast {
-    pages: HashMap<u64, Page>,
+pub struct PagedMemoryCacheLast<S: BuildHasher> {
+    pages: HashMap<u64, Page, S>,
     last_page_id: Option<u64>,
     last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
 }
 
-impl MemoryEmulator for PagedMemoryCacheLast {
+impl<S: BuildHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     fn load_u64(&mut self, addr: u64) -> u64 {
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)
@@ -59,7 +69,7 @@ impl MemoryEmulator for PagedMemoryCacheLast {
     }
 }
 
-impl PagedMemoryCacheLast {
+impl<S: BuildHasher> PagedMemoryCacheLast<S> {
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {
@@ -174,11 +184,13 @@ impl PagedMemoryCacheLast {
 
 #[cfg(test)]
 mod tests {
-    use crate::emulators::paged_last_cache::{PAGE_SIZE, PagedMemoryCacheLast};
+    use crate::emulators::paged_last_cache::{
+        PAGE_SIZE, PagedMemoryCacheLast, PagedMemoryCacheLastDefault,
+    };
 
     #[test]
     fn page_reuse_result_in_same_pointer() {
-        let mut mem = PagedMemoryCacheLast::default();
+        let mut mem = PagedMemoryCacheLastDefault::default();
         let p1 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
         let p2 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
 

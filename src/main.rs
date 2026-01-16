@@ -3,17 +3,20 @@ use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
-use fast_mem::emulators::paged_last_cache::PagedMemoryCacheLast;
+use fast_mem::emulators::paged_last_cache::{PagedMemoryCacheLast, PagedMemoryCacheLastDefault};
 use fast_mem::replay_mem_operations;
 
 fn main() {
     bench_fib("Noop: Fib", NoopMem::default());
     bench_exec_block("Noop: Exec Block", NoopMem::default());
 
-    bench_fib("PageMemoryLastCache: Fib", PagedMemoryCacheLast::default());
+    bench_fib(
+        "PageMemoryLastCache: Fib",
+        PagedMemoryCacheLastDefault::default(),
+    );
     bench_exec_block(
         "PageMemoryLastCache: Exec Block",
-        PagedMemoryCacheLast::default(),
+        PagedMemoryCacheLastDefault::default(),
     );
 
     // bench_fib("(Fib) Paged Memory: FxHash", PagedMemoryFxHash::default());
