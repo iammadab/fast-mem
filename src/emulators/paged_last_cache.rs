@@ -23,36 +23,39 @@ pub struct PagedMemoryCacheLast {
 }
 
 impl MemoryEmulator for PagedMemoryCacheLast {
-    fn load_u8(&self, addr: u64) -> u8 {
-        todo!()
+    fn load_u64(&mut self, addr: u64) -> u64 {
+        let bytes = self.read_n_bytes_const::<8>(addr);
+        u64::from_le_bytes(bytes)
     }
 
-    fn load_u16(&self, addr: u64) -> u16 {
-        todo!()
+    fn load_u32(&mut self, addr: u64) -> u32 {
+        let bytes = self.read_n_bytes_const::<4>(addr);
+        u32::from_le_bytes(bytes)
     }
 
-    fn load_u32(&self, addr: u64) -> u32 {
-        todo!()
+    fn load_u16(&mut self, addr: u64) -> u16 {
+        let bytes = self.read_n_bytes_const::<2>(addr);
+        u16::from_le_bytes(bytes)
     }
 
-    fn load_u64(&self, addr: u64) -> u64 {
-        todo!()
-    }
-
-    fn store_u8(&mut self, addr: u64, value: u8) {
-        todo!()
-    }
-
-    fn store_u16(&mut self, addr: u64, value: u16) {
-        todo!()
-    }
-
-    fn store_u32(&mut self, addr: u64, value: u32) {
-        todo!()
+    fn load_u8(&mut self, addr: u64) -> u8 {
+        self.read_n_bytes_const::<1>(addr)[0]
     }
 
     fn store_u64(&mut self, addr: u64, value: u64) {
-        todo!()
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u32(&mut self, addr: u64, value: u32) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u16(&mut self, addr: u64, value: u16) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
+    }
+
+    fn store_u8(&mut self, addr: u64, value: u8) {
+        self.write_n_bytes(addr, &value.to_le_bytes());
     }
 }
 
@@ -69,6 +72,12 @@ impl PagedMemoryCacheLast {
     #[inline]
     pub fn page_offset(addr: u64) -> usize {
         (addr & PAGE_MASK) as usize
+    }
+
+    pub(crate) fn read_n_bytes_const<const N: usize>(&mut self, addr: u64) -> [u8; N] {
+        let mut out = [0u8; N];
+        self.read_into(addr, &mut out);
+        out
     }
 
     fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {

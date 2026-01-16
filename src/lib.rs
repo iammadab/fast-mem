@@ -7,10 +7,10 @@ use crate::emulators::paged::{PagedMemory, PagedMemoryFxHash};
 pub mod emulators;
 
 pub trait MemoryEmulator {
-    fn load_u8(&self, addr: u64) -> u8;
-    fn load_u16(&self, addr: u64) -> u16;
-    fn load_u32(&self, addr: u64) -> u32;
-    fn load_u64(&self, addr: u64) -> u64;
+    fn load_u8(&mut self, addr: u64) -> u8;
+    fn load_u16(&mut self, addr: u64) -> u16;
+    fn load_u32(&mut self, addr: u64) -> u32;
+    fn load_u64(&mut self, addr: u64) -> u64;
 
     fn store_u8(&mut self, addr: u64, value: u8);
     fn store_u16(&mut self, addr: u64, value: u16);
