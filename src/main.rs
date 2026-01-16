@@ -9,7 +9,17 @@ use fast_mem::emulators::paged_last_cache::{
 };
 use fast_mem::replay_mem_operations;
 
-fn main() {}
+fn main() {
+    bench_fib(PagedMemoryDefault::default());
+    bench_fib(PagedMemoryAHash::default());
+    bench_fib(PagedMemoryFxHash::default());
+    bench_fib(PagedMemoryNoHashU64::default());
+
+    bench_exec_block(PagedMemoryCacheLastDefault::default());
+    bench_exec_block(PagedMemoryCacheLastAHash::default());
+    bench_exec_block(PagedMemoryCacheLastFxHash::default());
+    bench_exec_block(PagedMemoryCacheLastNoHashU64::default());
+}
 
 fn bench_exec_block<M: MemoryEmulator>(emulator: M) {
     let label = format!("{}: exec_block", emulator.name());
