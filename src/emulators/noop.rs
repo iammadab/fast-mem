@@ -31,4 +31,6 @@ impl MemoryEmulator for NoopMem {
     fn name(&self) -> String {
         "NoopMem".to_string()
     }
+
+    fn finish(&self) {}
 }

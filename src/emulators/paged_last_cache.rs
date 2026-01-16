@@ -26,6 +26,11 @@ pub struct PagedMemoryCacheLast<S: NamedHasher> {
     pages: HashMap<u64, Page, S>,
     last_page_id: Option<u64>,
     last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
+
+    #[cfg(feature = "cache_stats")]
+    cache_hit: u64,
+    #[cfg(feature = "cache_stats")]
+    cache_miss: u64,
 }
 
 impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
@@ -67,6 +72,16 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     fn store_u8(&mut self, addr: u64, value: u8) {
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
+
+    fn finish(&self) {
+        #[cfg(feature = "cache_stats")]
+        println!(
+            "cache hit: {}\ncache miss: {}\ntotal: {}",
+            self.cache_hit,
+            self.cache_miss,
+            self.cache_hit + self.cache_miss
+        );
+    }
 }
 
 impl<S: NamedHasher> PagedMemoryCacheLast<S> {
@@ -93,8 +108,17 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
     fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
         if self.last_page_id == Some(page_id) {
             if let Some(mut ptr) = self.last_page_ptr {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1
+                }
                 return unsafe { ptr.as_mut() };
             }
+        }
+
+        #[cfg(feature = "cache_stats")]
+        {
+            self.cache_miss += 1;
         }
 
         let entry = self
@@ -108,15 +132,24 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
         entry
     }
 
-    fn page_ptr(&mut self, page_id: u64) -> Option<&mut [u8; PAGE_SIZE]> {
+    fn page_ptr(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
         if self.last_page_id == Some(page_id) {
-            if let Some(mut ptr) = self.last_page_ptr {
-                return Some(unsafe { ptr.as_mut() });
+            if let Some(ptr) = self.last_page_ptr {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1
+                }
+                return Some(unsafe { ptr.as_ref() });
             }
         }
 
+        #[cfg(feature = "cache_stats")]
+        {
+            self.cache_miss += 1;
+        }
+
         let page = self.pages.get_mut(&page_id)?;
-        let ptr = NonNull::from(page.as_mut());
+        let ptr = NonNull::from(page.as_ref());
 
         self.last_page_id = Some(page_id);
         self.last_page_ptr = Some(ptr);
