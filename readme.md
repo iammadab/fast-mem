@@ -144,3 +144,12 @@ Figured out the issue
 - when a read is attempted to a page that doesn't exist
 - I return 0 as the value but I don't create the page
 - so if that address is hit again on the next operation it will still consider it a cache miss
+- I changed that and the cache profile is now as follows:
+
+```shell
+PagedMemCacheLast(FxHash): exec_block
+38.607080239s
+cache hit: 2,717,731,592
+cache miss: 1,443,055,930
+total: 4,160,787,522
+```
