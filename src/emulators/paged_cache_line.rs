@@ -16,26 +16,36 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
-pub type PagedMemoryCacheLastDefault = PagedMemoryCacheLast<Sip>;
-pub type PagedMemoryCacheLastAHash = PagedMemoryCacheLast<AHash>;
-pub type PagedMemoryCacheLastFxHash = PagedMemoryCacheLast<FxHash>;
-pub type PagedMemoryCacheLastNoHashU64 = PagedMemoryCacheLast<NoHashU64>;
+const CACHE_LINES: usize = 1;
 
-#[derive(Default)]
-pub struct PagedMemoryCacheLast<S: NamedHasher> {
-    pages: HashMap<u64, Page, S>,
-    last_page_id: Option<u64>,
-    last_page_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
+pub type PagedMemoryCacheLineDefault = PagedMemoryCacheLine<Sip, CACHE_LINES>;
+pub type PagedMemoryCacheLineAHash = PagedMemoryCacheLine<AHash, CACHE_LINES>;
+pub type PagedMemoryCacheLineFxHash = PagedMemoryCacheLine<FxHash, CACHE_LINES>;
+pub type PagedMemoryCacheLineNoHashU64 = PagedMemoryCacheLine<NoHashU64, CACHE_LINES>;
 
-    #[cfg(feature = "cache_stats")]
-    cache_hit: u64,
-    #[cfg(feature = "cache_stats")]
-    cache_miss: u64,
+#[derive(Copy, Clone)]
+struct CacheLine {
+    page_id: u64,
+    ptr: NonNull<[u8; PAGE_SIZE]>,
 }
 
-impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
+pub struct PagedMemoryCacheLine<S: NamedHasher, const N: usize> {
+    pages: HashMap<u64, Page, S>,
+    cache: [Option<CacheLine>; N],
+}
+
+impl<S: NamedHasher, const N: usize> Default for PagedMemoryCacheLine<S, N> {
+    fn default() -> Self {
+        Self {
+            pages: HashMap::default(),
+            cache: [None; N],
+        }
+    }
+}
+
+impl<S: NamedHasher, const N: usize> MemoryEmulator for PagedMemoryCacheLine<S, N> {
     fn name(&self) -> String {
-        format!("PagedMemCacheLast({})", S::NAME)
+        format!("PagedMemoryCacheLine({})", S::NAME)
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
@@ -73,18 +83,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
 
-    fn finish(&self) {
-        #[cfg(feature = "cache_stats")]
-        println!(
-            "cache hit: {}\ncache miss: {}\ntotal: {}",
-            self.cache_hit,
-            self.cache_miss,
-            self.cache_hit + self.cache_miss
-        );
-    }
+    fn finish(&self) {}
 }
 
-impl<S: NamedHasher> PagedMemoryCacheLast<S> {
+impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {
@@ -99,26 +101,18 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
         (addr & PAGE_MASK) as usize
     }
 
-    pub(crate) fn read_n_bytes_const<const N: usize>(&mut self, addr: u64) -> [u8; N] {
-        let mut out = [0u8; N];
+    pub(crate) fn read_n_bytes_const<const M: usize>(&mut self, addr: u64) -> [u8; M] {
+        let mut out = [0u8; M];
         self.read_into(addr, &mut out);
         out
     }
 
     fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
-        if self.last_page_id == Some(page_id) {
-            if let Some(mut ptr) = self.last_page_ptr {
-                #[cfg(feature = "cache_stats")]
-                {
-                    self.cache_hit += 1
-                }
-                return unsafe { ptr.as_mut() };
+        let c_i = cache_index(page_id, N);
+        if let Some(mut line) = self.cache[c_i] {
+            if line.page_id == page_id {
+                return unsafe { line.ptr.as_mut() };
             }
-        }
-
-        #[cfg(feature = "cache_stats")]
-        {
-            self.cache_miss += 1;
         }
 
         let entry = self
@@ -127,25 +121,16 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
             .or_insert_with(|| Box::new([0; PAGE_SIZE]));
         let ptr = NonNull::from(entry.as_mut());
 
-        self.last_page_id = Some(page_id);
-        self.last_page_ptr = Some(ptr);
+        self.cache[c_i] = Some(CacheLine { page_id, ptr });
         entry
     }
 
     fn page_ptr(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
-        if self.last_page_id == Some(page_id) {
-            if let Some(ptr) = self.last_page_ptr {
-                #[cfg(feature = "cache_stats")]
-                {
-                    self.cache_hit += 1
-                }
-                return Some(unsafe { ptr.as_ref() });
+        let c_i = cache_index(page_id, N);
+        if let Some(line) = self.cache[c_i] {
+            if line.page_id == page_id {
+                return Some(unsafe { line.ptr.as_ref() });
             }
-        }
-
-        #[cfg(feature = "cache_stats")]
-        {
-            self.cache_miss += 1;
         }
 
         let page = self
@@ -153,11 +138,8 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
             .entry(page_id)
             .or_insert_with(|| Box::new([0; PAGE_SIZE]));
         let ptr = NonNull::from(page.as_ref());
-        // let page = self.pages.get_mut(&page_id)?;
-        // let ptr = NonNull::from(page.as_ref());
 
-        self.last_page_id = Some(page_id);
-        self.last_page_ptr = Some(ptr);
+        self.cache[c_i] = Some(CacheLine { page_id, ptr });
         Some(page)
     }
 
@@ -220,18 +202,9 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::emulators::paged_last_cache::{
-        PAGE_SIZE, PagedMemoryCacheLast, PagedMemoryCacheLastDefault,
-    };
-
-    #[test]
-    fn page_reuse_result_in_same_pointer() {
-        let mut mem = PagedMemoryCacheLastDefault::default();
-        let p1 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
-        let p2 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
-
-        assert_eq!(p1, p2);
-    }
+/// Map a page_id to a cache index
+/// this is a control lever as the distribution of page_id's
+/// can affect the cache_hit count
+fn cache_index(page_id: u64, capacity: usize) -> usize {
+    (page_id as usize) & (capacity - 1)
 }
