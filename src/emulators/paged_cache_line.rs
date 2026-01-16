@@ -104,6 +104,24 @@ impl<S: NamedHasher, const N: usize> PagedMemoryCacheLine<S, N> {
         self.read_into(addr, &mut out);
         out
     }
+
+    fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
+        let c_i = cache_index(page_id, N);
+        if let Some(mut line) = self.cache[c_i] {
+            if line.page_id == page_id {
+                return unsafe { line.ptr.as_mut() };
+            }
+        }
+
+        let entry = self
+            .pages
+            .entry(page_id)
+            .or_insert_with(|| Box::new([0; PAGE_SIZE]));
+        let ptr = NonNull::from(entry.as_mut());
+
+        self.cache[c_i] = Some(CacheLine { page_id, ptr });
+        entry
+    }
 }
 
 /// Map a page_id to a cache index
