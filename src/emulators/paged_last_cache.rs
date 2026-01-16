@@ -15,6 +15,7 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
+#[derive(Default)]
 pub struct PagedMemoryCacheLast {
     pages: HashMap<u64, Page>,
     last_page_id: Option<u64>,
@@ -88,5 +89,22 @@ impl PagedMemoryCacheLast {
         self.last_page_id = Some(page_id);
         self.last_page_ptr = Some(ptr);
         entry
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::emulators::paged_last_cache::{PAGE_SHIFT, PAGE_SIZE, PagedMemoryCacheLast};
+
+    #[test]
+    fn page_reuse_result_in_same_pointer() {
+        let mut mem = PagedMemoryCacheLast::default();
+        let addr1 = (5 << PAGE_SHIFT) | 123;
+        let addr2 = (5 << PAGE_SHIFT) | 999;
+
+        let p1 = mem.page_ptr_mut(addr1) as *mut [u8; PAGE_SIZE];
+        let p2 = mem.page_ptr_mut(addr2) as *mut [u8; PAGE_SIZE];
+
+        assert_eq!(p1, p2);
     }
 }
