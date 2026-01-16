@@ -71,9 +71,7 @@ impl PagedMemoryCacheLast {
         (addr & PAGE_MASK) as usize
     }
 
-    fn page_ptr_mut(&mut self, addr: u64) -> &mut [u8; PAGE_SIZE] {
-        let page_id = Self::page_idx(addr);
-
+    fn page_ptr_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
         if self.last_page_id == Some(page_id) {
             if let Some(mut ptr) = self.last_page_ptr {
                 return unsafe { ptr.as_mut() };
@@ -90,20 +88,66 @@ impl PagedMemoryCacheLast {
         self.last_page_ptr = Some(ptr);
         entry
     }
+
+    fn page_ptr(&mut self, page_id: u64) -> Option<&mut [u8; PAGE_SIZE]> {
+        if self.last_page_id == Some(page_id) {
+            if let Some(mut ptr) = self.last_page_ptr {
+                return Some(unsafe { ptr.as_mut() });
+            }
+        }
+
+        let page = self.pages.get_mut(&page_id)?;
+        let ptr = NonNull::from(page.as_mut());
+
+        self.last_page_id = Some(page_id);
+        self.last_page_ptr = Some(ptr);
+        Some(page)
+    }
+
+    fn read_into(&mut self, addr: u64, out: &mut [u8]) {
+        let len = out.len();
+        if len == 0 {
+            return;
+        }
+
+        let end = addr
+            .checked_add(len as u64 - 1)
+            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+
+        if end > MAX_ADDR {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+
+        let mut curr_addr = addr;
+        let mut bytes_left = len;
+        let mut dst_off = 0;
+
+        while bytes_left > 0 {
+            let idx = Self::page_idx(curr_addr);
+            let offset = Self::page_offset(curr_addr);
+
+            let chunk = bytes_left.min(PAGE_SIZE - offset);
+
+            if let Some(page) = self.page_ptr(idx) {
+                out[dst_off..dst_off + chunk].copy_from_slice(&page[offset..offset + chunk]);
+            } // else leave as zeros
+
+            curr_addr += chunk as u64;
+            dst_off += chunk;
+            bytes_left -= chunk;
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::emulators::paged_last_cache::{PAGE_SHIFT, PAGE_SIZE, PagedMemoryCacheLast};
+    use crate::emulators::paged_last_cache::{PAGE_SIZE, PagedMemoryCacheLast};
 
     #[test]
     fn page_reuse_result_in_same_pointer() {
         let mut mem = PagedMemoryCacheLast::default();
-        let addr1 = (5 << PAGE_SHIFT) | 123;
-        let addr2 = (5 << PAGE_SHIFT) | 999;
-
-        let p1 = mem.page_ptr_mut(addr1) as *mut [u8; PAGE_SIZE];
-        let p2 = mem.page_ptr_mut(addr2) as *mut [u8; PAGE_SIZE];
+        let p1 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
+        let p2 = mem.page_ptr_mut(5) as *mut [u8; PAGE_SIZE];
 
         assert_eq!(p1, p2);
     }
