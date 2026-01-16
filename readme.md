@@ -139,3 +139,8 @@ total: 4,160,787,522
 ```
 
 - I expected to have only `1,443,055,930` cache misses
+
+Figured out the issue
+- when a read is attempted to a page that doesn't exist
+- I return 0 as the value but I don't create the page
+- so if that address is hit again on the next operation it will still consider it a cache miss
