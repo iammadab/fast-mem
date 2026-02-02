@@ -1,6 +1,6 @@
 # Trace Stats
 
-`trace_stats` is a standalone binary for analyzing memory traces. It parses the trace file and reports width distribution, page straddles, page locality (transitions + run-lengths + hot pages), and reuse distance (op-distance between page touches).
+`trace_stats` is a standalone binary for analyzing memory traces. It parses the trace file and reports width distribution, page straddles, page locality (transitions + run-lengths + hot pages), reuse distance, and cache simulations.
 
 ## Usage
 
@@ -49,3 +49,7 @@ Measures op-distance between two accesses to the same page. Buckets the distance
 ### Direct-mapped cache simulation
 
 Simulates direct-mapped page caches at the configured sizes and reports hit/miss rates plus conflict misses. This helps estimate whether a tiny page cache is likely to pay off.
+
+### Absent read reuse
+
+Tracks reuse distance and cache-sim hit rates for reads to pages that have never been written. This helps estimate whether a negative cache (for absent pages) would eliminate costly lookups.

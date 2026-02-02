@@ -9,8 +9,9 @@ mod types;
 #[path = "trace_stats/utils.rs"]
 mod utils;
 
-use metrics::reuse_distance::ReuseDistanceStats;
-use metrics::{direct_mapped_cache::DirectMappedCacheStats, page_locality::PageLocalityStats};
+use metrics::absent_reuse::AbsentReuseStats;
+use metrics::direct_mapped_cache::DirectMappedCacheStats;
+use metrics::{page_locality::PageLocalityStats, reuse_distance::ReuseDistanceStats};
 use metrics::{straddle::StraddleStats, width::WidthStats};
 use types::{Config, OpContext, Totals};
 
@@ -52,6 +53,7 @@ struct Stats {
     page_locality: PageLocalityStats,
     reuse_distance: ReuseDistanceStats,
     dm_cache: DirectMappedCacheStats,
+    absent_reuse: AbsentReuseStats,
 }
 
 impl Stats {
@@ -62,6 +64,7 @@ impl Stats {
             page_locality: PageLocalityStats::new(),
             reuse_distance: ReuseDistanceStats::new(),
             dm_cache: DirectMappedCacheStats::new(&config.cache_sizes),
+            absent_reuse: AbsentReuseStats::new(&config.cache_sizes),
         }
     }
 
@@ -71,6 +74,7 @@ impl Stats {
         self.page_locality.update(ctx);
         self.reuse_distance.update(ctx);
         self.dm_cache.update(ctx);
+        self.absent_reuse.update(ctx);
     }
 
     fn finish(&mut self) {
@@ -217,6 +221,7 @@ fn print_report(totals: &Totals, stats: &Stats, config: &Config) {
     stats.page_locality.print(totals, config);
     stats.reuse_distance.print(totals, config);
     stats.dm_cache.print(totals, config);
+    stats.absent_reuse.print(totals, config);
 }
 
 fn width_index(width: usize) -> usize {
