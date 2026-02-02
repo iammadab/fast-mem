@@ -39,38 +39,134 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
+        let end = addr
+            .checked_add(7)
+            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            if let Some(page) = self.page_ptr(start_page) {
+                let mut bytes = [0u8; 8];
+                bytes.copy_from_slice(&page[offset..offset + 8]);
+                return u64::from_le_bytes(bytes);
+            }
+            return 0;
+        }
+
         let bytes = self.read_n_bytes_const::<8>(addr);
         u64::from_le_bytes(bytes)
     }
 
     fn load_u32(&mut self, addr: u64) -> u32 {
+        let end = addr
+            .checked_add(3)
+            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            if let Some(page) = self.page_ptr(start_page) {
+                let mut bytes = [0u8; 4];
+                bytes.copy_from_slice(&page[offset..offset + 4]);
+                return u32::from_le_bytes(bytes);
+            }
+            return 0;
+        }
+
         let bytes = self.read_n_bytes_const::<4>(addr);
         u32::from_le_bytes(bytes)
     }
 
     fn load_u16(&mut self, addr: u64) -> u16 {
+        let end = addr
+            .checked_add(1)
+            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            if let Some(page) = self.page_ptr(start_page) {
+                let mut bytes = [0u8; 2];
+                bytes.copy_from_slice(&page[offset..offset + 2]);
+                return u16::from_le_bytes(bytes);
+            }
+            return 0;
+        }
+
         let bytes = self.read_n_bytes_const::<2>(addr);
         u16::from_le_bytes(bytes)
     }
 
     fn load_u8(&mut self, addr: u64) -> u8 {
+        let start_page = Self::page_idx(addr);
+        if let Some(page) = self.page_ptr(start_page) {
+            let offset = Self::page_offset(addr);
+            return page[offset];
+        }
+
         self.read_n_bytes_const::<1>(addr)[0]
     }
 
     fn store_u64(&mut self, addr: u64, value: u64) {
+        let end = addr
+            .checked_add(7)
+            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            let page = self.page_ptr_mut(start_page);
+            page[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+            return;
+        }
+
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
 
     fn store_u32(&mut self, addr: u64, value: u32) {
+        let end = addr
+            .checked_add(3)
+            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            let page = self.page_ptr_mut(start_page);
+            page[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+            return;
+        }
+
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
 
     fn store_u16(&mut self, addr: u64, value: u16) {
+        let end = addr
+            .checked_add(1)
+            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            let page = self.page_ptr_mut(start_page);
+            page[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+            return;
+        }
+
         self.write_n_bytes(addr, &value.to_le_bytes());
     }
 
     fn store_u8(&mut self, addr: u64, value: u8) {
-        self.write_n_bytes(addr, &value.to_le_bytes());
+        let start_page = Self::page_idx(addr);
+        let page = self.page_ptr_mut(start_page);
+        let offset = Self::page_offset(addr);
+        page[offset] = value;
     }
 
     fn finish(&self) {
