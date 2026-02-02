@@ -314,6 +314,24 @@ Why a small page cache should help (from perf + trace stats):
 - straddles are 0%, so each op needs only one page lookup—every cache hit directly removes the dominant cost.
 - fib is almost a single-page trace, so a last-N cache should nearly eliminate lookups after warmup.
 
+Direct-mapped page cache simulation results.
+- Fib cache sim
+```shell
+direct-mapped page cache sim:
+  N=4: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=8: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=16: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=32: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+```
+- Exec block cache sim
+```shell
+direct-mapped page cache sim:
+  N=4: hits 3,749,153,831 (90.11%), misses 411,633,691 (9.89%), conflict 411,633,687 (100.00% of misses)
+  N=8: hits 3,897,780,430 (93.68%), misses 263,007,092 (6.32%), conflict 263,007,084 (100.00% of misses)
+  N=16: hits 4,086,823,701 (98.22%), misses 73,963,821 (1.78%), conflict 73,963,805 (100.00% of misses)
+  N=32: hits 4,140,204,127 (99.51%), misses 20,583,395 (0.49%), conflict 20,583,363 (100.00% of misses)
+```
+
 Absent-read reuse metrics (read-only semantics).
 - fib: 117,000,006 absent reads across 1 page; reuse is ~100% at distance 1; absent cache sim hits ~100% even at N=4.
 - exec_block: 3,464,970,427 absent reads across 236 pages; reuse is very tight (78.43% at distance 1, 20.58% at 2–3).
