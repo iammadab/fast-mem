@@ -57,7 +57,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.pages.get(&start_page) {
+            if let Some(page) = self.cache_get(start_page) {
                 let mut bytes = [0u8; 8];
                 bytes.copy_from_slice(&page[offset..offset + 8]);
                 return u64::from_le_bytes(bytes);
@@ -81,7 +81,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.pages.get(&start_page) {
+            if let Some(page) = self.cache_get(start_page) {
                 let mut bytes = [0u8; 4];
                 bytes.copy_from_slice(&page[offset..offset + 4]);
                 return u32::from_le_bytes(bytes);
@@ -105,7 +105,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.pages.get(&start_page) {
+            if let Some(page) = self.cache_get(start_page) {
                 let mut bytes = [0u8; 2];
                 bytes.copy_from_slice(&page[offset..offset + 2]);
                 return u16::from_le_bytes(bytes);
@@ -124,7 +124,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         }
 
         let start_page = Self::page_idx(addr);
-        if let Some(page) = self.pages.get(&start_page) {
+        if let Some(page) = self.cache_get(start_page) {
             let offset = Self::page_offset(addr);
             return page[offset];
         }
@@ -208,6 +208,27 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
 }
 
 impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
+    #[inline]
+    fn cache_get(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
+        if N == 0 {
+            return self.pages.get(&page_id).map(|page| page.as_ref());
+        }
+
+        debug_assert!(N.is_power_of_two());
+        let idx = (page_id as usize) & (N - 1);
+
+        if self.cache_ids[idx] == page_id {
+            if let Some(ptr) = self.cache_ptrs[idx] {
+                return Some(unsafe { ptr.as_ref() });
+            }
+        }
+
+        let page = self.pages.get(&page_id)?;
+        self.cache_ids[idx] = page_id;
+        self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+        Some(page)
+    }
+
     /// Return the page index given the address
     #[inline]
     pub fn page_idx(addr: u64) -> u64 {
@@ -231,7 +252,7 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             .or_insert_with(|| Box::new([0; PAGE_SIZE]))
     }
 
-    pub(crate) fn read_n_bytes_const<const M: usize>(&self, addr: u64) -> [u8; M] {
+    pub(crate) fn read_n_bytes_const<const M: usize>(&mut self, addr: u64) -> [u8; M] {
         let mut out = [0u8; M];
         self.read_into(addr, &mut out);
         out
@@ -239,7 +260,7 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
 
     /// Read n contiguous bytes from memory
     /// assumes that out is zeroed out
-    fn read_into(&self, addr: u64, out: &mut [u8]) {
+    fn read_into(&mut self, addr: u64, out: &mut [u8]) {
         let len = out.len();
         if len == 0 {
             return;
@@ -257,7 +278,7 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.pages.get(&start_page) {
+            if let Some(page) = self.cache_get(start_page) {
                 out.copy_from_slice(&page[offset..offset + len]);
             }
             return;
@@ -273,7 +294,7 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
 
             let chunk = bytes_left.min(PAGE_SIZE - offset);
 
-            if let Some(page) = self.pages.get(&idx) {
+            if let Some(page) = self.cache_get(idx) {
                 out[dst_off..dst_off + chunk].copy_from_slice(&page[offset..offset + chunk]);
             } // else leave as zeros
 
