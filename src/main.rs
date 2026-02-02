@@ -28,6 +28,8 @@ fn main() {
         return;
     }
 
+    bench_fib(NoopMem::default());
+    bench_exec_block(NoopMem::default());
     bench_fib(PagedMemoryFxHash::default());
     bench_exec_block(PagedMemoryFxHash::default());
     bench_fib(PagedMemoryCache32FxHash::default());

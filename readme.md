@@ -347,3 +347,9 @@ Negative cache enabled (read-only semantics).
   - PagedMemCache8(FxHash): fib 563.77048ms, exec_block 30.588335483s.
   - PagedMemCache16(FxHash): fib 993.117062ms, exec_block 37.714374599s.
   - PagedMemCache32(FxHash): fib 673.450707ms, exec_block 24.587162403s.
+
+Noop baseline vs PagedMem vs Cache32 (latest run).
+- NoopMem: fib 455.483688ms, exec_block 18.890467474s.
+- PagedMem(FxHash): fib 677.194233ms, exec_block 27.169512508s.
+- PagedMemCache32(FxHash): fib 570.4265ms, exec_block 23.490696333s.
+- we're getting closer to the Noop lower bound now.
