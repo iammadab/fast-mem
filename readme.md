@@ -153,3 +153,23 @@ cache hit: 2,717,731,592
 cache miss: 1,443,055,930
 total: 4,160,787,522
 ```
+
+Fixed-width Fast Paths
+- the hot path was dominated by read_into
+- most accesses are single-page, so we can avoid the generic read/write loop
+- added specialized load/store fast paths for 1/2/4/8-byte ops when the access stays within a page
+- only fall back to read_n_bytes/write_n_bytes on cross-page accesses
+
+```shell
+PagedMem(FxHash): fib
+664.94949ms
+PagedMem(FxHash): exec_block
+29.649904728s
+
+PagedMemCacheLast(FxHash): fib
+704.275774ms
+PagedMemCacheLast(FxHash): exec_block
+32.209270595s
+```
+
+- perf now shows read_into ~0.1%; most time is in replay loop/inlined fast path
