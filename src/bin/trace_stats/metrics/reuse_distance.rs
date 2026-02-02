@@ -1,8 +1,11 @@
+// Measures how many operations occur between two accesses to the same page
+// (op-distance reuse), which indicates how effective a small page cache could be.
 use std::collections::HashMap;
 
 use crate::types::{Config, OpContext, Totals};
 use crate::utils;
 
+// Buckets reuse distances and counts first-time (cold) page touches.
 pub struct ReuseDistanceStats {
     reuse_buckets: Vec<u64>,
     last_seen: HashMap<u64, u64>,

@@ -1,6 +1,8 @@
+// Tracks read/write width distribution (u8/u16/u32/u64) to show which sizes dominate.
 use crate::types::{Config, OpContext, Totals};
 use crate::utils;
 
+// Counts reads and writes per width bucket.
 pub struct WidthStats {
     reads: [u64; 4],
     writes: [u64; 4],

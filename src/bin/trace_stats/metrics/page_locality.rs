@@ -1,8 +1,11 @@
+// Measures how often accesses stay on the same page vs jump to a new page,
+// and how long those same-page runs last (run-length histogram + hot pages).
 use std::collections::HashMap;
 
 use crate::types::{Config, OpContext, Totals};
 use crate::utils;
 
+// Tracks per-page hit counts and consecutive same-page run lengths.
 pub struct PageLocalityStats {
     page_counts: HashMap<u64, u64>,
     transitions: u64,

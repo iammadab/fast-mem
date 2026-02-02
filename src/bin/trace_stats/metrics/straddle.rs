@@ -1,6 +1,8 @@
+// Counts operations that cross a page boundary (addr..addr+width-1 spans two pages).
 use crate::types::{Config, OpContext, Totals};
 use crate::utils;
 
+// Number of straddling operations.
 pub struct StraddleStats {
     count: u64,
 }
