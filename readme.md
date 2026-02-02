@@ -184,6 +184,7 @@ More visibility into trace structure.
 - straddle ops: how many accesses cross a page boundary (so they touch two pages).
 - page locality: how frequently we stay on the same page vs jump, plus the length of same-page runs and the hottest pages.
 - reuse distance: how many operations occur before we touch the same page again, plus how many pages are seen for the first time.
+
 - Fib output
 ```shell
 trace: mem_bin/mem-fib-gc.bin
@@ -305,3 +306,10 @@ reuse distance (ops):
   2,147,483,648-4,294,967,295: 1,133 (0.00%)
 cold misses: 14,487
 ```
+
+Why a small page cache should help (from perf + trace stats):
+- perf shows hashbrown lookup + hashing dominates the hot path, meaning page table lookup is the main cost per op.
+- proposed fix: a tiny cache mapping `page_id -> page pointer` to bypass the HashMap on hits.
+- trace stats support this: reuse distance is very short (≈65% after 1 op, ≈88% within 3 ops) and a few pages are extremely hot.
+- straddles are 0%, so each op needs only one page lookup—every cache hit directly removes the dominant cost.
+- fib is almost a single-page trace, so a last-N cache should nearly eliminate lookups after warmup.
