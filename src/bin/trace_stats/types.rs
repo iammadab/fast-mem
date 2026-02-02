@@ -2,6 +2,7 @@ pub struct Config {
     pub trace_path: String,
     pub page_shift: u32,
     pub top_k: usize,
+    pub cache_sizes: Vec<usize>,
 }
 
 pub struct Totals {

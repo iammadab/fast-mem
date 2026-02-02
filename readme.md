@@ -184,6 +184,7 @@ More visibility into trace structure.
 - straddle ops: how many accesses cross a page boundary (so they touch two pages).
 - page locality: how frequently we stay on the same page vs jump, plus the length of same-page runs and the hottest pages.
 - reuse distance: how many operations occur before we touch the same page again, plus how many pages are seen for the first time.
+
 - Fib output
 ```shell
 trace: mem_bin/mem-fib-gc.bin
@@ -304,4 +305,29 @@ reuse distance (ops):
   1,073,741,824-2,147,483,647: 130 (0.00%)
   2,147,483,648-4,294,967,295: 1,133 (0.00%)
 cold misses: 14,487
+```
+
+Why a small page cache should help (from perf + trace stats):
+- perf shows hashbrown lookup + hashing dominates the hot path, meaning page table lookup is the main cost per op.
+- proposed fix: a tiny cache mapping `page_id -> page pointer` to bypass the HashMap on hits.
+- trace stats support this: reuse distance is very short (≈65% after 1 op, ≈88% within 3 ops) and a few pages are extremely hot.
+- straddles are 0%, so each op needs only one page lookup—every cache hit directly removes the dominant cost.
+- fib is almost a single-page trace, so a last-N cache should nearly eliminate lookups after warmup.
+
+Direct-mapped page cache simulation results.
+- Fib cache sim
+```shell
+direct-mapped page cache sim:
+  N=4: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=8: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=16: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+  N=32: hits 117,000,005 (100.00%), misses 2 (0.00%), conflict 0 (0.00% of misses)
+```
+- Exec block cache sim
+```shell
+direct-mapped page cache sim:
+  N=4: hits 3,749,153,831 (90.11%), misses 411,633,691 (9.89%), conflict 411,633,687 (100.00% of misses)
+  N=8: hits 3,897,780,430 (93.68%), misses 263,007,092 (6.32%), conflict 263,007,084 (100.00% of misses)
+  N=16: hits 4,086,823,701 (98.22%), misses 73,963,821 (1.78%), conflict 73,963,805 (100.00% of misses)
+  N=32: hits 4,140,204,127 (99.51%), misses 20,583,395 (0.49%), conflict 20,583,363 (100.00% of misses)
 ```
