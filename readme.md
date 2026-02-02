@@ -180,7 +180,10 @@ PagedMemCacheLast(FxHash): exec_block
 
 More visibility into trace structure. 
 - implemented a trace analyzer to get some trace structure metrics
-TODO: brief description of the metrics we are tracking
+- width distribution: how often reads and writes use 1/2/4/8-byte accesses.
+- straddle ops: how many accesses cross a page boundary (so they touch two pages).
+- page locality: how frequently we stay on the same page vs jump, plus the length of same-page runs and the hottest pages.
+- reuse distance: how many operations occur before we touch the same page again, plus how many pages are seen for the first time.
 - Fib output
 ```shell
 trace: mem_bin/mem-fib-gc.bin
