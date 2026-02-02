@@ -14,9 +14,15 @@ use fast_mem::replay_mem_operations;
 use fast_mem::MemoryEmulator;
 
 fn main() {
-    let perf_mode = std::env::args().any(|arg| arg == "--perf");
+    let args: Vec<String> = std::env::args().collect();
+    let perf_mode = args.iter().any(|arg| arg == "--perf");
+    let perf_cache16 = args.iter().any(|arg| arg == "--perf-cache16");
     if perf_mode {
         bench_exec_block(PagedMemoryFxHash::default());
+        return;
+    }
+    if perf_cache16 {
+        bench_exec_block(PagedMemoryCache16FxHash::default());
         return;
     }
 
