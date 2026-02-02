@@ -338,12 +338,12 @@ Absent-read reuse metrics (read-only semantics).
 - absent direct-mapped cache sim: hit rates are ~99.8–99.9% for N=4–32 on the absent-only stream.
 - takeaway: a negative cache should eliminate most HashMap lookups for absent reads and is likely to deliver large gains.
 
-Baseline vs Cache32 (FxHash).
-- PagedMem(FxHash): fib 701.883639ms, exec_block 26.61158114s.
-- PagedMemCache32(FxHash): fib 607.409128ms, exec_block 24.041621447s.
-
-Cache size comparison (FxHash).
-- PagedMemCache4(FxHash): fib 576.994677ms, exec_block 25.13949827s.
-- PagedMemCache8(FxHash): fib 563.77048ms, exec_block 30.588335483s.
-- PagedMemCache16(FxHash): fib 993.117062ms, exec_block 37.714374599s.
-- PagedMemCache32(FxHash): fib 673.450707ms, exec_block 24.587162403s.
+Negative cache enabled (read-only semantics).
+- baseline vs cache32 (FxHash):
+  - PagedMem(FxHash): fib 701.883639ms, exec_block 26.61158114s.
+  - PagedMemCache32(FxHash): fib 607.409128ms, exec_block 24.041621447s.
+- cache size comparison (FxHash):
+  - PagedMemCache4(FxHash): fib 576.994677ms, exec_block 25.13949827s.
+  - PagedMemCache8(FxHash): fib 563.77048ms, exec_block 30.588335483s.
+  - PagedMemCache16(FxHash): fib 993.117062ms, exec_block 37.714374599s.
+  - PagedMemCache32(FxHash): fib 673.450707ms, exec_block 24.587162403s.
