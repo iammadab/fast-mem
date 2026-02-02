@@ -180,6 +180,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
+            self.invalidate_absent(start_page);
             let page = self.cache_get_mut(start_page);
             page[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
             return;
@@ -200,6 +201,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
+            self.invalidate_absent(start_page);
             let page = self.cache_get_mut(start_page);
             page[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
             return;
@@ -220,6 +222,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
+            self.invalidate_absent(start_page);
             let page = self.cache_get_mut(start_page);
             page[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
             return;
@@ -235,6 +238,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         }
 
         let start_page = Self::page_idx(addr);
+        self.invalidate_absent(start_page);
         let page = self.cache_get_mut(start_page);
         let offset = Self::page_offset(addr);
         page[offset] = value;
@@ -317,6 +321,23 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         }
         self.absent_ids[idx] = page_id;
         None
+    }
+
+    #[inline]
+    fn invalidate_absent(&mut self, page_id: u64) {
+        if N == 0 {
+            return;
+        }
+
+        debug_assert!(N.is_power_of_two());
+        let idx = (page_id as usize) & (N - 1);
+        if self.absent_ids[idx] == page_id {
+            self.absent_ids[idx] = u64::MAX;
+            #[cfg(feature = "cache_stats")]
+            {
+                self.neg_invalidate += 1;
+            }
+        }
     }
 
     #[inline]
@@ -456,6 +477,7 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
+            self.invalidate_absent(start_page);
             let page = self.cache_get_mut(start_page);
             page[offset..offset + bytes.len()].copy_from_slice(bytes);
             return;
