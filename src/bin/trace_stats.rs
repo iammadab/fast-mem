@@ -60,6 +60,7 @@ fn main() {
     let mut write_ops: u64 = 0;
     let mut width_reads = [0u64; 4];
     let mut width_writes = [0u64; 4];
+    let mut straddle_ops: u64 = 0;
 
     while pos + 10 <= data.len() {
         let op = data[pos];
@@ -69,7 +70,13 @@ fn main() {
             std::process::exit(1);
         }
 
-        let _addr = u64::from_le_bytes(data[pos + 2..pos + 10].try_into().expect("addr bytes"));
+        let addr = u64::from_le_bytes(data[pos + 2..pos + 10].try_into().expect("addr bytes"));
+        let end = addr.checked_add(width as u64 - 1).unwrap_or(u64::MAX);
+        let start_page = addr >> page_shift;
+        let end_page = end >> page_shift;
+        if start_page != end_page {
+            straddle_ops += 1;
+        }
         pos += 10;
 
         let width_idx = match width {
@@ -141,6 +148,17 @@ fn main() {
         };
         println!("  {}: {} ({:.2}%)", width, format_count(count), pct);
     }
+
+    let straddle_pct = if ops == 0 {
+        0.0
+    } else {
+        (straddle_ops as f64) * 100.0 / (ops as f64)
+    };
+    println!(
+        "straddle ops: {} ({:.2}%)",
+        format_count(straddle_ops),
+        straddle_pct
+    );
 }
 
 fn format_count(value: u64) -> String {
