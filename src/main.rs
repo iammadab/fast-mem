@@ -2,7 +2,7 @@ use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
-use fast_mem::emulators::paged_cache::PagedMemoryCache32FxHash;
+use fast_mem::emulators::paged_cache::{PagedMemoryCache32FxHash, PagedMemoryCache4FxHash};
 use fast_mem::emulators::paged_last_cache::{
     PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
     PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
@@ -13,9 +13,14 @@ use fast_mem::MemoryEmulator;
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let perf_mode = args.iter().any(|arg| arg == "--perf");
+    let perf_cache4 = args.iter().any(|arg| arg == "--perf-cache4");
     let perf_cache32 = args.iter().any(|arg| arg == "--perf-cache32");
     if perf_mode {
         bench_exec_block(PagedMemoryFxHash::default());
+        return;
+    }
+    if perf_cache4 {
+        bench_exec_block(PagedMemoryCache4FxHash::default());
         return;
     }
     if perf_cache32 {
