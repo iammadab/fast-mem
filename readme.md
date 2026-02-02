@@ -2,6 +2,10 @@
 
 A high-performance emulator for a 2⁶⁴-byte addressable memory space, tested against real workloads to measure practical performance.
 
+### Trace Stats
+
+Docs: `src/bin/trace_stats/README.md`
+
 #### Worklog
 
 The emulator is benchmarked against two workloads
