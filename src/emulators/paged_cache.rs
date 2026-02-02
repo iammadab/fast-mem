@@ -93,7 +93,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.cache_get(start_page) {
+            if let Some(page) = self.cache_get_single_page(start_page) {
                 let mut bytes = [0u8; 8];
                 bytes.copy_from_slice(&page[offset..offset + 8]);
                 return u64::from_le_bytes(bytes);
@@ -117,7 +117,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.cache_get(start_page) {
+            if let Some(page) = self.cache_get_single_page(start_page) {
                 let mut bytes = [0u8; 4];
                 bytes.copy_from_slice(&page[offset..offset + 4]);
                 return u32::from_le_bytes(bytes);
@@ -141,7 +141,7 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         let end_page = Self::page_idx(end);
         if start_page == end_page {
             let offset = Self::page_offset(addr);
-            if let Some(page) = self.cache_get(start_page) {
+            if let Some(page) = self.cache_get_single_page(start_page) {
                 let mut bytes = [0u8; 2];
                 bytes.copy_from_slice(&page[offset..offset + 2]);
                 return u16::from_le_bytes(bytes);
@@ -160,12 +160,12 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
         }
 
         let start_page = Self::page_idx(addr);
-        if let Some(page) = self.cache_get(start_page) {
+        if let Some(page) = self.cache_get_single_page(start_page) {
             let offset = Self::page_offset(addr);
             return page[offset];
         }
 
-        self.read_n_bytes_const::<1>(addr)[0]
+        0
     }
 
     fn store_u64(&mut self, addr: u64, value: u64) {
@@ -257,6 +257,68 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
 }
 
 impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
+    #[inline]
+    fn cache_get_single_page(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
+        if N == 0 {
+            let page = self.pages.get(&page_id);
+            #[cfg(feature = "cache_stats")]
+            {
+                if page.is_some() {
+                    self.cache_miss_present += 1;
+                } else {
+                    self.cache_miss_absent += 1;
+                }
+            }
+            return page.map(|page| page.as_ref());
+        }
+
+        debug_assert!(N.is_power_of_two());
+        let idx = (page_id as usize) & (N - 1);
+
+        if self.cache_ids[idx] == page_id {
+            if let Some(ptr) = self.cache_ptrs[idx] {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1;
+                }
+                return Some(unsafe { ptr.as_ref() });
+            }
+        }
+
+        if self.absent_ids[idx] == page_id {
+            #[cfg(feature = "cache_stats")]
+            {
+                self.cache_miss_absent += 1;
+                self.neg_hit += 1;
+            }
+            return None;
+        }
+
+        #[cfg(feature = "cache_stats")]
+        {
+            self.neg_miss += 1;
+        }
+
+        let page = self.pages.get(&page_id);
+        if let Some(page) = page {
+            #[cfg(feature = "cache_stats")]
+            {
+                self.cache_miss_present += 1;
+            }
+            self.cache_ids[idx] = page_id;
+            self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+            return Some(page);
+        }
+
+        #[cfg(feature = "cache_stats")]
+        {
+            self.cache_miss_absent += 1;
+            self.neg_insert += 1;
+        }
+        self.absent_ids[idx] = page_id;
+        None
+    }
+
     #[inline]
     fn cache_get(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
         if N == 0 {
