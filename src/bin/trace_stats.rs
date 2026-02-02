@@ -56,6 +56,10 @@ fn main() {
     let data = &mmap[..];
     let mut pos: usize = 0;
     let mut ops: u64 = 0;
+    let mut read_ops: u64 = 0;
+    let mut write_ops: u64 = 0;
+    let mut width_reads = [0u64; 4];
+    let mut width_writes = [0u64; 4];
 
     while pos + 10 <= data.len() {
         let op = data[pos];
@@ -68,6 +72,14 @@ fn main() {
         let _addr = u64::from_le_bytes(data[pos + 2..pos + 10].try_into().expect("addr bytes"));
         pos += 10;
 
+        let width_idx = match width {
+            1 => 0,
+            2 => 1,
+            4 => 2,
+            8 => 3,
+            _ => unreachable!(),
+        };
+
         match op {
             1 => {
                 if pos + width > data.len() {
@@ -75,8 +87,13 @@ fn main() {
                     std::process::exit(1);
                 }
                 pos += width;
+                write_ops += 1;
+                width_writes[width_idx] += 1;
             }
-            2 => {}
+            2 => {
+                read_ops += 1;
+                width_reads[width_idx] += 1;
+            }
             _ => {
                 eprintln!("error: unknown op {} at offset {}", op, pos - 10);
                 std::process::exit(1);
@@ -93,8 +110,52 @@ fn main() {
         );
     }
 
-    println!("ops: {}", ops);
-    println!("bytes: {}/{}", pos, data.len());
+    println!("ops: {}", format_count(ops));
+    println!(
+        "bytes: {}/{}",
+        format_count(pos as u64),
+        format_count(data.len() as u64)
+    );
+    println!("reads: {}", format_count(read_ops));
+    println!("writes: {}", format_count(write_ops));
+
+    let widths = ["u8", "u16", "u32", "u64"];
+    println!("width distribution (reads):");
+    for (idx, width) in widths.iter().enumerate() {
+        let count = width_reads[idx];
+        let pct = if read_ops == 0 {
+            0.0
+        } else {
+            (count as f64) * 100.0 / (read_ops as f64)
+        };
+        println!("  {}: {} ({:.2}%)", width, format_count(count), pct);
+    }
+
+    println!("width distribution (writes):");
+    for (idx, width) in widths.iter().enumerate() {
+        let count = width_writes[idx];
+        let pct = if write_ops == 0 {
+            0.0
+        } else {
+            (count as f64) * 100.0 / (write_ops as f64)
+        };
+        println!("  {}: {} ({:.2}%)", width, format_count(count), pct);
+    }
+}
+
+fn format_count(value: u64) -> String {
+    let s = value.to_string();
+    let mut out = String::with_capacity(s.len() + s.len() / 3);
+    let mut count = 0;
+    for ch in s.chars().rev() {
+        if count == 3 {
+            out.push(',');
+            count = 0;
+        }
+        out.push(ch);
+        count += 1;
+    }
+    out.chars().rev().collect()
 }
 
 fn usage_and_exit(message: &str) -> ! {
