@@ -20,10 +20,6 @@ fn main() {
         return;
     }
 
-    bench_fib(PagedMemoryFxHash::default());
-    bench_exec_block(PagedMemoryFxHash::default());
-    bench_fib(PagedMemoryCacheLastFxHash::default());
-    bench_exec_block(PagedMemoryCacheLastFxHash::default());
     bench_fib(PagedMemoryCache4FxHash::default());
     bench_exec_block(PagedMemoryCache4FxHash::default());
     bench_fib(PagedMemoryCache8FxHash::default());
