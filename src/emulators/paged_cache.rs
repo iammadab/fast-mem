@@ -33,12 +33,22 @@ pub struct PagedMemoryCache<const N: usize, S: NamedHasher> {
     cache_ids: [u64; N],
     #[allow(dead_code)]
     cache_ptrs: [Option<NonNull<[u8; PAGE_SIZE]>>; N],
+    #[allow(dead_code)]
+    absent_ids: [u64; N],
     #[cfg(feature = "cache_stats")]
     cache_hit: u64,
     #[cfg(feature = "cache_stats")]
     cache_miss_present: u64,
     #[cfg(feature = "cache_stats")]
     cache_miss_absent: u64,
+    #[cfg(feature = "cache_stats")]
+    neg_hit: u64,
+    #[cfg(feature = "cache_stats")]
+    neg_miss: u64,
+    #[cfg(feature = "cache_stats")]
+    neg_insert: u64,
+    #[cfg(feature = "cache_stats")]
+    neg_invalidate: u64,
 }
 
 impl<const N: usize, S: NamedHasher + Default> Default for PagedMemoryCache<N, S> {
@@ -47,12 +57,21 @@ impl<const N: usize, S: NamedHasher + Default> Default for PagedMemoryCache<N, S
             pages: HashMap::default(),
             cache_ids: [u64::MAX; N],
             cache_ptrs: [None; N],
+            absent_ids: [u64::MAX; N],
             #[cfg(feature = "cache_stats")]
             cache_hit: 0,
             #[cfg(feature = "cache_stats")]
             cache_miss_present: 0,
             #[cfg(feature = "cache_stats")]
             cache_miss_absent: 0,
+            #[cfg(feature = "cache_stats")]
+            neg_hit: 0,
+            #[cfg(feature = "cache_stats")]
+            neg_miss: 0,
+            #[cfg(feature = "cache_stats")]
+            neg_insert: 0,
+            #[cfg(feature = "cache_stats")]
+            neg_invalidate: 0,
         }
     }
 }
@@ -224,10 +243,14 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     fn finish(&self) {
         #[cfg(feature = "cache_stats")]
         println!(
-            "cache hit: {}\ncache miss (present): {}\ncache miss (absent): {}\ntotal: {}",
+            "cache hit: {}\ncache miss (present): {}\ncache miss (absent): {}\nneg hit: {}\nneg miss: {}\nneg insert: {}\nneg invalidate: {}\ntotal: {}",
             self.cache_hit,
             self.cache_miss_present,
             self.cache_miss_absent,
+            self.neg_hit,
+            self.neg_miss,
+            self.neg_insert,
+            self.neg_invalidate,
             self.cache_hit + self.cache_miss_present + self.cache_miss_absent
         );
     }
