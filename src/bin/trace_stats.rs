@@ -66,6 +66,10 @@ fn main() {
     let mut run_len_buckets = vec![0u64; 64];
     let mut current_page: Option<u64> = None;
     let mut current_run_len: u64 = 0;
+    let mut reuse_buckets = vec![0u64; 64];
+    let mut last_seen_op: HashMap<u64, u64> = HashMap::new();
+    let mut cold_misses: u64 = 0;
+    let mut op_index: u64 = 0;
 
     while pos + 10 <= data.len() {
         let op = data[pos];
@@ -83,6 +87,15 @@ fn main() {
             straddle_ops += 1;
         }
         *page_counts.entry(start_page).or_insert(0) += 1;
+        match last_seen_op.insert(start_page, op_index) {
+            None => {
+                cold_misses += 1;
+            }
+            Some(prev) => {
+                let distance = op_index.saturating_sub(prev);
+                record_run_len(&mut reuse_buckets, distance.max(1));
+            }
+        }
         match current_page {
             None => {
                 current_page = Some(start_page);
@@ -130,6 +143,7 @@ fn main() {
         }
 
         ops += 1;
+        op_index += 1;
     }
 
     if pos != data.len() {
@@ -197,17 +211,24 @@ fn main() {
         transition_pct
     );
 
+    let total_runs: u64 = run_len_buckets.iter().sum();
     println!("page run lengths:");
     for (idx, count) in run_len_buckets.iter().enumerate() {
         if *count == 0 {
             continue;
         }
         let (min, max) = bucket_range(idx);
+        let pct = if total_runs == 0 {
+            0.0
+        } else {
+            (*count as f64) * 100.0 / (total_runs as f64)
+        };
         println!(
-            "  {}-{}: {}",
+            "  {}-{}: {} ({:.2}%)",
             format_count(min),
             format_count(max),
-            format_count(*count)
+            format_count(*count),
+            pct
         );
     }
 
@@ -225,6 +246,28 @@ fn main() {
             println!("  0x{:x}: {} ({:.2}%)", page_id, format_count(count), pct);
         }
     }
+
+    let total_reuse: u64 = reuse_buckets.iter().sum();
+    println!("reuse distance (ops):");
+    for (idx, count) in reuse_buckets.iter().enumerate() {
+        if *count == 0 {
+            continue;
+        }
+        let (min, max) = bucket_range(idx);
+        let pct = if total_reuse == 0 {
+            0.0
+        } else {
+            (*count as f64) * 100.0 / (total_reuse as f64)
+        };
+        println!(
+            "  {}-{}: {} ({:.2}%)",
+            format_count(min),
+            format_count(max),
+            format_count(*count),
+            pct
+        );
+    }
+    println!("cold misses: {}", format_count(cold_misses));
 }
 
 fn record_run_len(buckets: &mut [u64], run_len: u64) {
