@@ -9,12 +9,15 @@ mod types;
 #[path = "trace_stats/utils.rs"]
 mod utils;
 
+use metrics::absent_reuse::AbsentReuseStats;
+use metrics::direct_mapped_cache::DirectMappedCacheStats;
 use metrics::{page_locality::PageLocalityStats, reuse_distance::ReuseDistanceStats};
 use metrics::{straddle::StraddleStats, width::WidthStats};
 use types::{Config, OpContext, Totals};
 
 const DEFAULT_PAGE_SHIFT: u32 = 12;
 const DEFAULT_TOP_K: usize = 20;
+const DEFAULT_CACHE_SIZES: &[usize] = &[4, 8, 16, 32];
 
 fn main() {
     let config = parse_args();
@@ -23,6 +26,15 @@ fn main() {
     println!("trace: {}", config.trace_path);
     println!("page_shift: {}", config.page_shift);
     println!("top_k: {}", config.top_k);
+    if !config.cache_sizes.is_empty() {
+        let sizes = config
+            .cache_sizes
+            .iter()
+            .map(|size| size.to_string())
+            .collect::<Vec<_>>()
+            .join(",");
+        println!("cache_sizes: {}", sizes);
+    }
 
     let file = File::open(&config.trace_path).unwrap_or_else(|err| {
         eprintln!("error: failed to open {}: {}", config.trace_path, err);
@@ -40,15 +52,19 @@ struct Stats {
     straddle: StraddleStats,
     page_locality: PageLocalityStats,
     reuse_distance: ReuseDistanceStats,
+    dm_cache: DirectMappedCacheStats,
+    absent_reuse: AbsentReuseStats,
 }
 
 impl Stats {
-    fn new() -> Self {
+    fn new(config: &Config) -> Self {
         Self {
             width: WidthStats::new(),
             straddle: StraddleStats::new(),
             page_locality: PageLocalityStats::new(),
             reuse_distance: ReuseDistanceStats::new(),
+            dm_cache: DirectMappedCacheStats::new(&config.cache_sizes),
+            absent_reuse: AbsentReuseStats::new(&config.cache_sizes),
         }
     }
 
@@ -57,6 +73,8 @@ impl Stats {
         self.straddle.update(ctx);
         self.page_locality.update(ctx);
         self.reuse_distance.update(ctx);
+        self.dm_cache.update(ctx);
+        self.absent_reuse.update(ctx);
     }
 
     fn finish(&mut self) {
@@ -69,6 +87,7 @@ fn parse_args() -> Config {
     let mut trace_path: Option<String> = None;
     let mut page_shift = DEFAULT_PAGE_SHIFT;
     let mut top_k = DEFAULT_TOP_K;
+    let mut cache_sizes: Option<Vec<usize>> = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -88,6 +107,12 @@ fn parse_args() -> Config {
                     usage_and_exit("invalid value for --top-k");
                 });
             }
+            "--cache-sizes" => {
+                let value = args.next().unwrap_or_else(|| {
+                    usage_and_exit("missing value for --cache-sizes");
+                });
+                cache_sizes = Some(parse_cache_sizes(&value));
+            }
             _ => {
                 if trace_path.is_some() {
                     usage_and_exit("unexpected extra argument");
@@ -105,6 +130,7 @@ fn parse_args() -> Config {
         trace_path,
         page_shift,
         top_k,
+        cache_sizes: cache_sizes.unwrap_or_else(|| DEFAULT_CACHE_SIZES.to_vec()),
     }
 }
 
@@ -118,7 +144,7 @@ fn parse_trace(data: &[u8], config: &Config) -> (Totals, Stats) {
         bytes_consumed: 0,
         bytes_total: data.len(),
     };
-    let mut stats = Stats::new();
+    let mut stats = Stats::new(config);
 
     while pos + 10 <= data.len() {
         let op = data[pos];
@@ -194,6 +220,8 @@ fn print_report(totals: &Totals, stats: &Stats, config: &Config) {
     stats.straddle.print(totals, config);
     stats.page_locality.print(totals, config);
     stats.reuse_distance.print(totals, config);
+    stats.dm_cache.print(totals, config);
+    stats.absent_reuse.print(totals, config);
 }
 
 fn width_index(width: usize) -> usize {
@@ -208,6 +236,27 @@ fn width_index(width: usize) -> usize {
 
 fn usage_and_exit(message: &str) -> ! {
     eprintln!("error: {}", message);
-    eprintln!("usage: trace_stats <trace_path> [--page-shift N] [--top-k N]");
+    eprintln!("usage: trace_stats <trace_path> [--page-shift N] [--top-k N] [--cache-sizes N,N]");
     std::process::exit(1);
+}
+
+fn parse_cache_sizes(value: &str) -> Vec<usize> {
+    let mut sizes = Vec::new();
+    for part in value.split(',') {
+        let part = part.trim();
+        if part.is_empty() {
+            usage_and_exit("invalid value for --cache-sizes");
+        }
+        let size = part.parse::<usize>().unwrap_or_else(|_| {
+            usage_and_exit("invalid value for --cache-sizes");
+        });
+        if size == 0 {
+            usage_and_exit("cache size must be > 0");
+        }
+        sizes.push(size);
+    }
+    if sizes.is_empty() {
+        usage_and_exit("invalid value for --cache-sizes");
+    }
+    sizes
 }
