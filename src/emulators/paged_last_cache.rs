@@ -1,8 +1,8 @@
 use std::{collections::HashMap, ptr::NonNull};
 
 use crate::{
-    MemoryEmulator,
     named_hasher::{AHash, FxHash, NamedHasher, NoHashU64, Sip},
+    MemoryEmulator,
 };
 
 /// Number of bits to describe entries in a page
@@ -221,7 +221,7 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
 #[cfg(test)]
 mod tests {
     use crate::emulators::paged_last_cache::{
-        PAGE_SIZE, PagedMemoryCacheLast, PagedMemoryCacheLastDefault,
+        PagedMemoryCacheLast, PagedMemoryCacheLastDefault, PAGE_SIZE,
     };
 
     #[test]

@@ -1,4 +1,3 @@
-use fast_mem::MemoryEmulator;
 use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
@@ -8,29 +7,19 @@ use fast_mem::emulators::paged_last_cache::{
     PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
 };
 use fast_mem::replay_mem_operations;
+use fast_mem::MemoryEmulator;
 
 fn main() {
-    bench_fib(PagedMemoryDefault::default());
-    bench_fib(PagedMemoryAHash::default());
+    let perf_mode = std::env::args().any(|arg| arg == "--perf");
+    if perf_mode {
+        bench_exec_block(PagedMemoryFxHash::default());
+        return;
+    }
+
     bench_fib(PagedMemoryFxHash::default());
-    bench_fib(PagedMemoryNoHashU64::default());
-
-    bench_exec_block(PagedMemoryDefault::default());
-    bench_exec_block(PagedMemoryAHash::default());
     bench_exec_block(PagedMemoryFxHash::default());
-    bench_exec_block(PagedMemoryNoHashU64::default());
-
-    bench_fib(PagedMemoryCacheLastDefault::default());
-    bench_fib(PagedMemoryCacheLastAHash::default());
     bench_fib(PagedMemoryCacheLastFxHash::default());
-    bench_fib(PagedMemoryCacheLastNoHashU64::default());
-
-    bench_exec_block(PagedMemoryCacheLastDefault::default());
-    bench_exec_block(PagedMemoryCacheLastAHash::default());
     bench_exec_block(PagedMemoryCacheLastFxHash::default());
-    bench_exec_block(PagedMemoryCacheLastNoHashU64::default());
-
-    // bench_exec_block(PagedMemoryCacheLastFxHash::default());
 }
 
 fn bench_exec_block<M: MemoryEmulator>(emulator: M) {

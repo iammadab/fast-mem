@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    MemoryEmulator,
     named_hasher::{AHash, FxHash, NamedHasher, NoHashU64, Sip},
+    MemoryEmulator,
 };
 
 /// Number of bits to describe entries in a page
@@ -115,6 +115,16 @@ impl<S: NamedHasher> PagedMemory<S> {
             panic!("write out of range: 0x{:x}", addr);
         }
 
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            if let Some(page) = self.pages.get(&start_page) {
+                out.copy_from_slice(&page[offset..offset + len]);
+            }
+            return;
+        }
+
         let mut curr_addr = addr;
         let mut bytes_left = len;
         let mut dst_off = 0;
@@ -148,6 +158,15 @@ impl<S: NamedHasher> PagedMemory<S> {
 
         if addr > MAX_ADDR || end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
+        }
+
+        let start_page = Self::page_idx(addr);
+        let end_page = Self::page_idx(end);
+        if start_page == end_page {
+            let offset = Self::page_offset(addr);
+            let page = self.ensure_page(start_page);
+            page[offset..offset + bytes.len()].copy_from_slice(bytes);
+            return;
         }
 
         let mut curr_addr = addr;
