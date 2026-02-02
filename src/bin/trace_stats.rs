@@ -1,4 +1,4 @@
-use std::{env, fs::File};
+use std::{collections::HashMap, env, fs::File};
 
 use memmap2::Mmap;
 
@@ -61,6 +61,11 @@ fn main() {
     let mut width_reads = [0u64; 4];
     let mut width_writes = [0u64; 4];
     let mut straddle_ops: u64 = 0;
+    let mut page_counts: HashMap<u64, u64> = HashMap::new();
+    let mut page_transitions: u64 = 0;
+    let mut run_len_buckets = vec![0u64; 64];
+    let mut current_page: Option<u64> = None;
+    let mut current_run_len: u64 = 0;
 
     while pos + 10 <= data.len() {
         let op = data[pos];
@@ -76,6 +81,23 @@ fn main() {
         let end_page = end >> page_shift;
         if start_page != end_page {
             straddle_ops += 1;
+        }
+        *page_counts.entry(start_page).or_insert(0) += 1;
+        match current_page {
+            None => {
+                current_page = Some(start_page);
+                current_run_len = 1;
+            }
+            Some(prev) => {
+                if prev == start_page {
+                    current_run_len += 1;
+                } else {
+                    page_transitions += 1;
+                    record_run_len(&mut run_len_buckets, current_run_len);
+                    current_page = Some(start_page);
+                    current_run_len = 1;
+                }
+            }
         }
         pos += 10;
 
@@ -115,6 +137,10 @@ fn main() {
             "warning: {} trailing bytes at end of trace",
             data.len() - pos
         );
+    }
+
+    if current_run_len > 0 {
+        record_run_len(&mut run_len_buckets, current_run_len);
     }
 
     println!("ops: {}", format_count(ops));
@@ -159,6 +185,63 @@ fn main() {
         format_count(straddle_ops),
         straddle_pct
     );
+
+    let transition_pct = if ops <= 1 {
+        0.0
+    } else {
+        (page_transitions as f64) * 100.0 / ((ops - 1) as f64)
+    };
+    println!(
+        "page transitions: {} ({:.2}%)",
+        format_count(page_transitions),
+        transition_pct
+    );
+
+    println!("page run lengths:");
+    for (idx, count) in run_len_buckets.iter().enumerate() {
+        if *count == 0 {
+            continue;
+        }
+        let (min, max) = bucket_range(idx);
+        println!(
+            "  {}-{}: {}",
+            format_count(min),
+            format_count(max),
+            format_count(*count)
+        );
+    }
+
+    if top_k > 0 {
+        let mut top_pages: Vec<(u64, u64)> = page_counts.into_iter().collect();
+        top_pages.sort_by(|a, b| b.1.cmp(&a.1));
+        top_pages.truncate(top_k);
+        println!("top pages:");
+        for (page_id, count) in top_pages {
+            let pct = if ops == 0 {
+                0.0
+            } else {
+                (count as f64) * 100.0 / (ops as f64)
+            };
+            println!("  0x{:x}: {} ({:.2}%)", page_id, format_count(count), pct);
+        }
+    }
+}
+
+fn record_run_len(buckets: &mut [u64], run_len: u64) {
+    if run_len == 0 {
+        return;
+    }
+    let idx = 63 - run_len.leading_zeros() as usize;
+    if idx >= buckets.len() {
+        return;
+    }
+    buckets[idx] += 1;
+}
+
+fn bucket_range(idx: usize) -> (u64, u64) {
+    let min = 1u64 << idx;
+    let max = (1u64 << (idx + 1)) - 1;
+    (min, max)
 }
 
 fn format_count(value: u64) -> String {
