@@ -5,13 +5,14 @@
 ## Usage
 
 ```shell
-cargo run --release --bin trace_stats -- <trace_path> [--page-shift 12] [--top-k 20]
+cargo run --release --bin trace_stats -- <trace_path> [--page-shift 12] [--top-k 20] [--cache-sizes 4,8,16,32]
 ```
 
 Flags:
 
 - `--page-shift N`: page size used for locality metrics (`2^N` bytes per page). Default is 12 (4 KiB).
 - `--top-k N`: number of hot pages to report. Use `0` to disable. Default is 20.
+- `--cache-sizes N,N`: comma-separated sizes for direct-mapped cache simulation. Defaults to `4,8,16,32`.
 
 ## Trace format
 
@@ -44,3 +45,7 @@ Tracks locality at the page level:
 ### Reuse distance
 
 Measures op-distance between two accesses to the same page. Buckets the distance in powers of two and counts first-time touches as cold misses. This approximates how effective small page caches might be.
+
+### Direct-mapped cache simulation
+
+Simulates direct-mapped page caches at the configured sizes and reports hit/miss rates plus conflict misses. This helps estimate whether a tiny page cache is likely to pay off.
