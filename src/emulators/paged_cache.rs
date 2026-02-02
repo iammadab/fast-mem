@@ -22,6 +22,11 @@ pub type PagedMemoryCacheAHash<const N: usize> = PagedMemoryCache<N, AHash>;
 pub type PagedMemoryCacheFxHash<const N: usize> = PagedMemoryCache<N, FxHash>;
 pub type PagedMemoryCacheNoHashU64<const N: usize> = PagedMemoryCache<N, NoHashU64>;
 
+pub type PagedMemoryCache4FxHash = PagedMemoryCache<4, FxHash>;
+pub type PagedMemoryCache8FxHash = PagedMemoryCache<8, FxHash>;
+pub type PagedMemoryCache16FxHash = PagedMemoryCache<16, FxHash>;
+pub type PagedMemoryCache32FxHash = PagedMemoryCache<32, FxHash>;
+
 pub struct PagedMemoryCache<const N: usize, S: NamedHasher> {
     pages: HashMap<u64, Page, S>,
     #[allow(dead_code)]

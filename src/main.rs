@@ -2,6 +2,10 @@ use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
+use fast_mem::emulators::paged_cache::{
+    PagedMemoryCache16FxHash, PagedMemoryCache32FxHash, PagedMemoryCache4FxHash,
+    PagedMemoryCache8FxHash,
+};
 use fast_mem::emulators::paged_last_cache::{
     PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
     PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
@@ -20,6 +24,14 @@ fn main() {
     bench_exec_block(PagedMemoryFxHash::default());
     bench_fib(PagedMemoryCacheLastFxHash::default());
     bench_exec_block(PagedMemoryCacheLastFxHash::default());
+    bench_fib(PagedMemoryCache4FxHash::default());
+    bench_exec_block(PagedMemoryCache4FxHash::default());
+    bench_fib(PagedMemoryCache8FxHash::default());
+    bench_exec_block(PagedMemoryCache8FxHash::default());
+    bench_fib(PagedMemoryCache16FxHash::default());
+    bench_exec_block(PagedMemoryCache16FxHash::default());
+    bench_fib(PagedMemoryCache32FxHash::default());
+    bench_exec_block(PagedMemoryCache32FxHash::default());
 }
 
 fn bench_exec_block<M: MemoryEmulator>(emulator: M) {
