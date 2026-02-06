@@ -1,14 +1,14 @@
+use fast_mem::MemoryEmulator;
 use fast_mem::emulators::noop::NoopMem;
 use fast_mem::emulators::paged::{
     PagedMemoryAHash, PagedMemoryDefault, PagedMemoryFxHash, PagedMemoryNoHashU64,
 };
-use fast_mem::emulators::paged_cache::{PagedMemoryCache32FxHash, PagedMemoryCache4FxHash};
+use fast_mem::emulators::paged_cache::{PagedMemoryCache4FxHash, PagedMemoryCache32FxHash};
 use fast_mem::emulators::paged_last_cache::{
     PagedMemoryCacheLast, PagedMemoryCacheLastAHash, PagedMemoryCacheLastDefault,
     PagedMemoryCacheLastFxHash, PagedMemoryCacheLastNoHashU64,
 };
 use fast_mem::replay_mem_operations;
-use fast_mem::MemoryEmulator;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -30,8 +30,8 @@ fn main() {
 
     bench_fib(NoopMem::default());
     bench_exec_block(NoopMem::default());
-    bench_fib(PagedMemoryFxHash::default());
-    bench_exec_block(PagedMemoryFxHash::default());
+    // bench_fib(PagedMemoryFxHash::default());
+    // bench_exec_block(PagedMemoryFxHash::default());
     bench_fib(PagedMemoryCache32FxHash::default());
     bench_exec_block(PagedMemoryCache32FxHash::default());
 }
