@@ -35,6 +35,8 @@ pub struct PagedMemoryCache<const N: usize, S: NamedHasher> {
     cache_ptrs: [Option<NonNull<[u8; PAGE_SIZE]>>; N],
     #[allow(dead_code)]
     absent_ids: [u64; N],
+    last_id: u64,
+    last_ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
     #[cfg(feature = "cache_stats")]
     cache_hit: u64,
     #[cfg(feature = "cache_stats")]
@@ -58,6 +60,8 @@ impl<const N: usize, S: NamedHasher + Default> Default for PagedMemoryCache<N, S
             cache_ids: [u64::MAX; N],
             cache_ptrs: [None; N],
             absent_ids: [u64::MAX; N],
+            last_id: u64::MAX,
+            last_ptr: None,
             #[cfg(feature = "cache_stats")]
             cache_hit: 0,
             #[cfg(feature = "cache_stats")]
@@ -269,6 +273,22 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
 impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
     #[inline]
     fn cache_get_single_page(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
+        if self.last_id == page_id {
+            if let Some(ptr) = self.last_ptr {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1;
+                }
+                return Some(unsafe { ptr.as_ref() });
+            }
+            #[cfg(feature = "cache_stats")]
+            {
+                self.cache_miss_absent += 1;
+                self.neg_hit += 1;
+            }
+            return None;
+        }
+
         if N == 0 {
             let page = self.pages.get(&page_id);
             #[cfg(feature = "cache_stats")]
@@ -279,7 +299,15 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                     self.cache_miss_absent += 1;
                 }
             }
-            return page.map(|page| page.as_ref());
+            if let Some(page) = page {
+                let ptr = NonNull::from(page.as_ref());
+                self.last_id = page_id;
+                self.last_ptr = Some(ptr);
+                return Some(page);
+            }
+            self.last_id = page_id;
+            self.last_ptr = None;
+            return None;
         }
 
         debug_assert!(N.is_power_of_two());
@@ -291,6 +319,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                 {
                     self.cache_hit += 1;
                 }
+                self.last_id = page_id;
+                self.last_ptr = Some(ptr);
                 return Some(unsafe { ptr.as_ref() });
             }
         }
@@ -301,6 +331,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                 self.cache_miss_absent += 1;
                 self.neg_hit += 1;
             }
+            self.last_id = page_id;
+            self.last_ptr = None;
             return None;
         }
 
@@ -317,6 +349,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             }
             self.cache_ids[idx] = page_id;
             self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+            self.last_id = page_id;
+            self.last_ptr = self.cache_ptrs[idx];
             return Some(page);
         }
 
@@ -326,6 +360,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             self.neg_insert += 1;
         }
         self.absent_ids[idx] = page_id;
+        self.last_id = page_id;
+        self.last_ptr = None;
         None
     }
 
@@ -348,6 +384,21 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
 
     #[inline]
     fn cache_get(&mut self, page_id: u64) -> Option<&[u8; PAGE_SIZE]> {
+        if self.last_id == page_id {
+            if let Some(ptr) = self.last_ptr {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1;
+                }
+                return Some(unsafe { ptr.as_ref() });
+            }
+            #[cfg(feature = "cache_stats")]
+            {
+                self.cache_miss_absent += 1;
+            }
+            return None;
+        }
+
         if N == 0 {
             let page = self.pages.get(&page_id);
             #[cfg(feature = "cache_stats")]
@@ -358,7 +409,15 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                     self.cache_miss_absent += 1;
                 }
             }
-            return page.map(|page| page.as_ref());
+            if let Some(page) = page {
+                let ptr = NonNull::from(page.as_ref());
+                self.last_id = page_id;
+                self.last_ptr = Some(ptr);
+                return Some(page);
+            }
+            self.last_id = page_id;
+            self.last_ptr = None;
+            return None;
         }
 
         debug_assert!(N.is_power_of_two());
@@ -370,6 +429,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                 {
                     self.cache_hit += 1;
                 }
+                self.last_id = page_id;
+                self.last_ptr = Some(ptr);
                 return Some(unsafe { ptr.as_ref() });
             }
         }
@@ -386,6 +447,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         let page = page?;
         self.cache_ids[idx] = page_id;
         self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+        self.last_id = page_id;
+        self.last_ptr = self.cache_ptrs[idx];
         Some(page)
     }
 
@@ -514,12 +577,29 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
 
     #[inline]
     fn cache_get_mut(&mut self, page_id: u64) -> &mut [u8; PAGE_SIZE] {
+        if self.last_id == page_id {
+            if let Some(mut ptr) = self.last_ptr {
+                #[cfg(feature = "cache_stats")]
+                {
+                    self.cache_hit += 1;
+                }
+                return unsafe { ptr.as_mut() };
+            }
+        }
+
         if N == 0 {
             #[cfg(feature = "cache_stats")]
             {
                 self.cache_miss_present += 1;
             }
-            return self.ensure_page(page_id);
+            let page = self
+                .pages
+                .entry(page_id)
+                .or_insert_with(|| Box::new([0; PAGE_SIZE]));
+            let ptr = NonNull::from(page.as_mut());
+            self.last_id = page_id;
+            self.last_ptr = Some(ptr);
+            return page;
         }
 
         debug_assert!(N.is_power_of_two());
@@ -531,6 +611,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
                 {
                     self.cache_hit += 1;
                 }
+                self.last_id = page_id;
+                self.last_ptr = Some(ptr);
                 return unsafe { ptr.as_mut() };
             }
         }
@@ -546,6 +628,8 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         let ptr = NonNull::from(entry.as_mut());
         self.cache_ids[idx] = page_id;
         self.cache_ptrs[idx] = Some(ptr);
+        self.last_id = page_id;
+        self.last_ptr = Some(ptr);
         entry
     }
 }
