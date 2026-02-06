@@ -17,6 +17,19 @@ const MAX_ADDR: u64 = u64::MAX;
 
 type Page = Box<[u8; PAGE_SIZE]>;
 
+#[derive(Copy, Clone)]
+struct CacheEntry {
+    id: u64,
+    ptr: Option<NonNull<[u8; PAGE_SIZE]>>,
+}
+
+impl CacheEntry {
+    const EMPTY: Self = Self {
+        id: u64::MAX,
+        ptr: None,
+    };
+}
+
 pub type PagedMemoryCacheDefault<const N: usize> = PagedMemoryCache<N, Sip>;
 pub type PagedMemoryCacheAHash<const N: usize> = PagedMemoryCache<N, AHash>;
 pub type PagedMemoryCacheFxHash<const N: usize> = PagedMemoryCache<N, FxHash>;
@@ -30,9 +43,7 @@ pub type PagedMemoryCache32FxHash = PagedMemoryCache<32, FxHash>;
 pub struct PagedMemoryCache<const N: usize, S: NamedHasher> {
     pages: HashMap<u64, Page, S>,
     #[allow(dead_code)]
-    cache_ids: [u64; N],
-    #[allow(dead_code)]
-    cache_ptrs: [Option<NonNull<[u8; PAGE_SIZE]>>; N],
+    cache_entries: [CacheEntry; N],
     #[allow(dead_code)]
     absent_ids: [u64; N],
     #[cfg(feature = "cache_stats")]
@@ -55,8 +66,7 @@ impl<const N: usize, S: NamedHasher + Default> Default for PagedMemoryCache<N, S
     fn default() -> Self {
         Self {
             pages: HashMap::default(),
-            cache_ids: [u64::MAX; N],
-            cache_ptrs: [None; N],
+            cache_entries: [CacheEntry::EMPTY; N],
             absent_ids: [u64::MAX; N],
             #[cfg(feature = "cache_stats")]
             cache_hit: 0,
@@ -279,8 +289,9 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         debug_assert!(N.is_power_of_two());
         let idx = (page_id as usize) & (N - 1);
 
-        if self.cache_ids[idx] == page_id {
-            if let Some(ptr) = self.cache_ptrs[idx] {
+        let entry = &self.cache_entries[idx];
+        if entry.id == page_id {
+            if let Some(ptr) = entry.ptr {
                 #[cfg(feature = "cache_stats")]
                 {
                     self.cache_hit += 1;
@@ -309,8 +320,9 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             {
                 self.cache_miss_present += 1;
             }
-            self.cache_ids[idx] = page_id;
-            self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+            let entry = &mut self.cache_entries[idx];
+            entry.id = page_id;
+            entry.ptr = Some(NonNull::from(page.as_ref()));
             return Some(page);
         }
 
@@ -358,8 +370,9 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         debug_assert!(N.is_power_of_two());
         let idx = (page_id as usize) & (N - 1);
 
-        if self.cache_ids[idx] == page_id {
-            if let Some(ptr) = self.cache_ptrs[idx] {
+        let entry = &self.cache_entries[idx];
+        if entry.id == page_id {
+            if let Some(ptr) = entry.ptr {
                 #[cfg(feature = "cache_stats")]
                 {
                     self.cache_hit += 1;
@@ -378,8 +391,9 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             }
         }
         let page = page?;
-        self.cache_ids[idx] = page_id;
-        self.cache_ptrs[idx] = Some(NonNull::from(page.as_ref()));
+        let entry = &mut self.cache_entries[idx];
+        entry.id = page_id;
+        entry.ptr = Some(NonNull::from(page.as_ref()));
         Some(page)
     }
 
@@ -515,8 +529,9 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         debug_assert!(N.is_power_of_two());
         let idx = (page_id as usize) & (N - 1);
 
-        if self.cache_ids[idx] == page_id {
-            if let Some(mut ptr) = self.cache_ptrs[idx] {
+        let entry_id = self.cache_entries[idx].id;
+        if entry_id == page_id {
+            if let Some(mut ptr) = self.cache_entries[idx].ptr {
                 #[cfg(feature = "cache_stats")]
                 {
                     self.cache_hit += 1;
@@ -529,13 +544,14 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
         {
             self.cache_miss_present += 1;
         }
-        let entry = self
+        let page_entry = self
             .pages
             .entry(page_id)
             .or_insert_with(|| Box::new([0; PAGE_SIZE]));
-        let ptr = NonNull::from(entry.as_mut());
-        self.cache_ids[idx] = page_id;
-        self.cache_ptrs[idx] = Some(ptr);
-        entry
+        let ptr = NonNull::from(page_entry.as_mut());
+        let entry = &mut self.cache_entries[idx];
+        entry.id = page_id;
+        entry.ptr = Some(ptr);
+        page_entry
     }
 }
