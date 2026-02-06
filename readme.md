@@ -353,3 +353,5 @@ Noop baseline vs PagedMem vs Cache32 (latest run).
 - PagedMem(FxHash): fib 677.194233ms, exec_block 27.169512508s.
 - PagedMemCache32(FxHash): fib 570.4265ms, exec_block 23.490696333s.
 - we're getting closer to the Noop lower bound now.
+
+I removed `checked_add` from the hot apply-ops paths (using safe bounds checks instead). It doesn't show up in perf anymore, but the wall-time benchmarks didn't move in this run.

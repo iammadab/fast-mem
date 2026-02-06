@@ -39,9 +39,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
-        let end = addr
-            .checked_add(7)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 7 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 7;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -60,9 +61,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn load_u32(&mut self, addr: u64) -> u32 {
-        let end = addr
-            .checked_add(3)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 3 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 3;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -81,9 +83,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn load_u16(&mut self, addr: u64) -> u16 {
-        let end = addr
-            .checked_add(1)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 1 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 1;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -112,9 +115,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn store_u64(&mut self, addr: u64, value: u64) {
-        let end = addr
-            .checked_add(7)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 7 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 7;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -129,9 +133,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn store_u32(&mut self, addr: u64, value: u32) {
-        let end = addr
-            .checked_add(3)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 3 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 3;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -146,9 +151,10 @@ impl<S: NamedHasher> MemoryEmulator for PagedMemoryCacheLast<S> {
     }
 
     fn store_u16(&mut self, addr: u64, value: u16) {
-        let end = addr
-            .checked_add(1)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 1 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 1;
 
         let start_page = Self::page_idx(addr);
         let end_page = Self::page_idx(end);
@@ -261,9 +267,10 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
             return;
         }
 
-        let _ = addr
-            .checked_add(len as u64 - 1)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        let last = len as u64 - 1;
+        if addr > MAX_ADDR - last {
+            panic!("read out of range: 0x{:x}", addr);
+        }
 
         let mut curr_addr = addr;
         let mut bytes_left = len;
@@ -290,9 +297,10 @@ impl<S: NamedHasher> PagedMemoryCacheLast<S> {
             return;
         }
 
-        let _ = addr
-            .checked_add(bytes.len() as u64 - 1)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        let last = bytes.len() as u64 - 1;
+        if addr > MAX_ADDR - last {
+            panic!("write out of range: 0x{:x}", addr);
+        }
 
         let mut curr_addr = addr;
         let mut bytes_left = bytes.len();

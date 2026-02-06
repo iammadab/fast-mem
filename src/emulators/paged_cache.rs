@@ -82,9 +82,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn load_u64(&mut self, addr: u64) -> u64 {
-        let end = addr
-            .checked_add(7)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 7 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 7;
         if end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -106,9 +107,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn load_u32(&mut self, addr: u64) -> u32 {
-        let end = addr
-            .checked_add(3)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 3 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 3;
         if end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -130,9 +132,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn load_u16(&mut self, addr: u64) -> u16 {
-        let end = addr
-            .checked_add(1)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 1 {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + 1;
         if end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -169,9 +172,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn store_u64(&mut self, addr: u64, value: u64) {
-        let end = addr
-            .checked_add(7)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 7 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 7;
         if addr > MAX_ADDR || end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -190,9 +194,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn store_u32(&mut self, addr: u64, value: u32) {
-        let end = addr
-            .checked_add(3)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 3 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 3;
         if addr > MAX_ADDR || end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -211,9 +216,10 @@ impl<const N: usize, S: NamedHasher> MemoryEmulator for PagedMemoryCache<N, S> {
     }
 
     fn store_u16(&mut self, addr: u64, value: u16) {
-        let end = addr
-            .checked_add(1)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        if addr > MAX_ADDR - 1 {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + 1;
         if addr > MAX_ADDR || end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
         }
@@ -420,9 +426,11 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             return;
         }
 
-        let end = addr
-            .checked_add(len as u64 - 1)
-            .unwrap_or_else(|| panic!("read out of range: 0x{:x}", addr));
+        let last = len as u64 - 1;
+        if addr > MAX_ADDR - last {
+            panic!("read out of range: 0x{:x}", addr);
+        }
+        let end = addr + last;
 
         if end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
@@ -465,9 +473,11 @@ impl<const N: usize, S: NamedHasher> PagedMemoryCache<N, S> {
             return;
         }
 
-        let end = addr
-            .checked_add(bytes.len() as u64 - 1)
-            .unwrap_or_else(|| panic!("write out of range: 0x{:x}", addr));
+        let last = bytes.len() as u64 - 1;
+        if addr > MAX_ADDR - last {
+            panic!("write out of range: 0x{:x}", addr);
+        }
+        let end = addr + last;
 
         if addr > MAX_ADDR || end > MAX_ADDR {
             panic!("write out of range: 0x{:x}", addr);
